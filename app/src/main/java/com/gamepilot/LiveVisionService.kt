@@ -21,8 +21,13 @@ import android.os.IBinder
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import com.google.mlkit.vision.common.InputImage
+import com.google.android.gms.tasks.Tasks
+import com.google.mlkit.vision.text.Text
+import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
+import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -38,7 +43,11 @@ class LiveVisionService : Service() {
         @Volatile var running = false
             private set
     }
-    private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    private val recognizers: List<TextRecognizer> = listOf(
+        TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS),
+        TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build()),
+        TextRecognition.getClient(JapaneseTextRecognizerOptions.Builder().build())
+    )
     private val processing = AtomicBoolean(false)
     private var worker: HandlerThread? = null
     private var handler: Handler? = null
@@ -121,24 +130,22 @@ class LiveVisionService : Service() {
             val bitmap = Bitmap.createBitmap(padded, 0, 0, image.width, image.height)
             padded.recycle()
             val tiles = sampleTiles(bitmap)
-            recognizer.process(InputImage.fromBitmap(bitmap, 0))
-                .addOnSuccessListener { result ->
-                    if (!closing) {
-                        val texts = result.textBlocks.flatMap { it.lines }
-                            .mapNotNull { line -> line.boundingBox?.let { SeenText(line.text, it) } }
-                        VisionBus.latest = LiveFrame(now, bitmap.width, bitmap.height, tiles, texts)
-                    }
+            val input = InputImage.fromBitmap(bitmap, 0)
+            val jobs = recognizers.map { it.process(input) }
+            Tasks.whenAllComplete(jobs).addOnCompleteListener {
+                val texts = jobs.mapNotNull { task ->
+                    if (task.isSuccessful) task.result as? Text else null
+                }.flatMap { result ->
+                    result.textBlocks.flatMap { block -> block.lines }
+                }.mapNotNull { line ->
+                    line.boundingBox?.let { SeenText(line.text, it) }
+                }.distinctBy { it.label to it.bounds.toShortString() }
+                if (!closing) {
+                    VisionBus.latest = LiveFrame(now, bitmap.width, bitmap.height, tiles, texts)
                 }
-                .addOnFailureListener { error ->
-                    if (!closing) {
-                        VisionBus.latest = LiveFrame(now, bitmap.width, bitmap.height, tiles, emptyList())
-                        Events.record(this, "OCR backend error: ${error.javaClass.simpleName}")
-                    }
-                }
-                .addOnCompleteListener {
-                    bitmap.recycle()
-                    processing.set(false)
-                }
+                bitmap.recycle()
+                processing.set(false)
+            }
         } catch (error: Exception) {
             processing.set(false)
             Events.record(this, "Frame processing failed: ${error.javaClass.simpleName}")
@@ -167,7 +174,7 @@ class LiveVisionService : Service() {
         projection?.stop()
         handler?.removeCallbacksAndMessages(null)
         worker?.quitSafely()
-        recognizer.close()
+        recognizers.forEach { it.close() }
         super.onDestroy()
     }
 }
