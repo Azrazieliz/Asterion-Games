@@ -88,6 +88,10 @@ class MainActivity : Activity() {
             Toast.makeText(this, "$linked newly matched installed games", Toast.LENGTH_LONG).show()
             render()
         }
+        button("Add another Android game") {
+            val id = (Profiles.all(this).maxOfOrNull { it.id } ?: 0) + 1
+            edit(GameProfile(id, "New Game", "", 6, 0, false, emptyList()))
+        }
         text("Games (matched automatically where possible; tap Edit for schedules or unmatched titles)", 17)
         Profiles.all(this).forEach { p ->
             val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -194,6 +198,7 @@ class MainActivity : Activity() {
                         hour = h, minute = m, enabled = enabled.isChecked,
                         adaptive = adaptive.isChecked, actions = script, maxMinutes = cap
                     )
+                    require(updated.title.isNotBlank()) { "Game name is required" }
                     require(!updated.enabled || updated.packageName.isNotBlank()) { "Choose an installed game before enabling its schedule" }
                     Profiles.save(this, Profiles.all(this).filter { it.id != updated.id } + updated)
                     Scheduler.schedule(this, updated)

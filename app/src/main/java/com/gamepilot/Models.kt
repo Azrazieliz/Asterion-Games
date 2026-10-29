@@ -49,7 +49,8 @@ object Profiles {
                     o.optBoolean("adaptive", true), o.optInt("maxMinutes", 20).coerceIn(1, 120)
                 )
             }
-            defaults().map { default -> saved.find { it.id == default.id } ?: default }
+            val known = defaults().map { default -> saved.find { it.id == default.id } ?: default }
+            known + saved.filter { it.id > defaults().size }.sortedBy { it.id }
         } catch (_: Exception) { defaults() }
     }
     fun save(context: Context, profiles: List<GameProfile>) {

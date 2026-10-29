@@ -42,7 +42,7 @@ object GameDataVault {
         val json = JSONObject(bytes.toString(Charsets.UTF_8))
         require(json.getString("project") == "AsterionPilot" && json.getInt("format") == FORMAT)
             { "Unsupported backup format" }
-        require(json.getInt("rosterSize") == 26) { "Unexpected roster" }
+        require(json.getInt("rosterSize") >= 1) { "Invalid roster metadata" }
         val data = json.getJSONObject("preferences")
         val records = json.getJSONArray("trajectories")
         require(records.length() <= 25000) { "Too many learned trajectories" }

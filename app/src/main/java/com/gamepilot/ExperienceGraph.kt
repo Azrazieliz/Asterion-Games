@@ -162,7 +162,7 @@ class ExperienceGraph(context: Context) {
                 val game = row.getInt("game")
                 val x = row.getDouble("x")
                 val y = row.getDouble("y")
-                require(game in 1..26 && x in 0.0..1.0 && y in 0.0..1.0) {
+                require(game in 1..1000000 && x in 0.0..1.0 && y in 0.0..1.0) {
                     "Invalid record at index $i"
                 }
                 val values = ContentValues().apply {
