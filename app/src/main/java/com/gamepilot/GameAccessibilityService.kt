@@ -29,6 +29,8 @@ class GameAccessibilityService : AccessibilityService() {
     private var missingFramesSince = 0L
     private var noCandidatesSince = 0L
     private var wrongAppChecks = 0
+    private var launchStartedAt = 0L
+    private var foregroundConfirmed = false
     private var wakeLock: PowerManager.WakeLock? = null
     private var lastRecoveryTime = 0L
     @Volatile private var lastWindowPackage: String? = null
@@ -98,6 +100,8 @@ class GameAccessibilityService : AccessibilityService() {
         lastFrameTime = 0
         isDispatching = false
         wrongAppChecks = 0
+        foregroundConfirmed = false
+        launchStartedAt = System.currentTimeMillis()
         missingFramesSince = 0L
         noCandidatesSince = 0L
         brain.resetSession()
@@ -160,7 +164,8 @@ class GameAccessibilityService : AccessibilityService() {
         if (isDispatching) { main.postDelayed({ adapt(p, id) }, 400); return }
         if (!currentPackageMatches(p)) {
             wrongAppChecks++
-            if (wrongAppChecks <= 3) {
+            if ((!foregroundConfirmed && System.currentTimeMillis() - launchStartedAt < 90_000L) ||
+                wrongAppChecks <= 3) {
                 main.postDelayed({ adapt(p, id) }, 1500)
                 return
             }
@@ -169,6 +174,7 @@ class GameAccessibilityService : AccessibilityService() {
             finish(id); return
         }
         wrongAppChecks = 0
+        foregroundConfirmed = true
         val live = VisionBus.latest
         val frame = if (live != null && System.currentTimeMillis() - live.time <= 3_000L) live
             else UiTreePerception.snapshot(rootInActiveWindow, resources.displayMetrics)
@@ -199,8 +205,9 @@ class GameAccessibilityService : AccessibilityService() {
         val choice = brain.choose(p, frame)
         if (choice == null) {
             if (noCandidatesSince == 0L) noCandidatesSince = System.currentTimeMillis()
-            if (System.currentTimeMillis() - noCandidatesSince >= 30_000) {
-                brain.unresolved(p, "No relevant or safe action found in 30 seconds")
+            val startupGrace = System.currentTimeMillis() - launchStartedAt < 120_000L
+            if (!startupGrace && System.currentTimeMillis() - noCandidatesSince >= 45_000L) {
+                brain.unresolved(p, "No relevant or safe action found after startup grace")
                 finish(id)
             } else main.postDelayed({ adapt(p, id) }, 1_000)
             return
