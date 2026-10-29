@@ -20,7 +20,8 @@ data class GameProfile(
     val id: Int, val title: String, val packageName: String,
     val hour: Int, val minute: Int, val enabled: Boolean,
     val actions: List<GameAction>, val adaptive: Boolean = true,
-    val maxMinutes: Int = 20
+    val maxMinutes: Int = 20,
+    val resetHour: Int = 0
 )
 
 sealed class GameAction {
@@ -46,7 +47,8 @@ object Profiles {
                     o.getInt("id"), o.getString("title"), o.optString("package"),
                     o.optInt("hour", 6), o.optInt("minute", 0), o.optBoolean("enabled"),
                     (0 until steps.length()).mapNotNull { idx -> parseAction(steps.getJSONObject(idx)) },
-                    o.optBoolean("adaptive", true), o.optInt("maxMinutes", 20).coerceIn(1, 120)
+                    o.optBoolean("adaptive", true), o.optInt("maxMinutes", 20).coerceIn(1, 120),
+                    o.optInt("resetHour", 0).coerceIn(0, 23)
                 )
             }
             val known = defaults().map { default -> saved.find { it.id == default.id } ?: default }
@@ -59,6 +61,7 @@ object Profiles {
             val o = JSONObject().put("id", p.id).put("title", p.title).put("package", p.packageName)
                 .put("hour", p.hour).put("minute", p.minute).put("enabled", p.enabled)
                 .put("adaptive", p.adaptive).put("maxMinutes", p.maxMinutes)
+                .put("resetHour", p.resetHour)
             val actions = JSONArray()
             p.actions.forEach { step ->
                 val s = when (step) {

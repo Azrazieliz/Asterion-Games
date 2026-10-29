@@ -3,6 +3,8 @@ package com.gamepilot
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Calendar
+import java.util.TimeZone
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -72,10 +74,27 @@ data class GoalProgress(
     val modifiedAt: Long = 0L
 )
 
+/** Game-local daily-window calculation, independent of the phone's midnight. */
+object DailyReset {
+    fun key(nowMillis: Long, resetHour: Int, timeZone: TimeZone = TimeZone.getDefault()): String {
+        require(resetHour in 0..23)
+        val calendar = Calendar.getInstance(timeZone).apply {
+            timeInMillis = nowMillis
+            add(Calendar.HOUR_OF_DAY, -resetHour)
+        }
+        return SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+            this.timeZone = timeZone
+        }.format(calendar.time)
+    }
+}
+
 class GoalLedger(private val context: Context) {
     private val prefs = context.getSharedPreferences("goal_ledger_v1", 0)
-    private fun dateKey(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-    private fun key(gameId: Int, goal: GameGoal): String = "$gameId:${dateKey()}:${goal.id}"
+    private fun dateKey(gameId: Int): String {
+        val resetHour = Profiles.all(context).firstOrNull { it.id == gameId }?.resetHour ?: 0
+        return DailyReset.key(System.currentTimeMillis(), resetHour)
+    }
+    private fun key(gameId: Int, goal: GameGoal): String = "$gameId:${dateKey(gameId)}:${goal.id}"
     fun read(gameId: Int, goal: GameGoal): GoalProgress {
         val raw = prefs.getString(key(gameId, goal), null) ?: return GoalProgress()
         return try {
