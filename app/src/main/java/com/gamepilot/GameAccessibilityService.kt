@@ -7,6 +7,7 @@ import android.content.Intent
 import android.graphics.Path
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import java.util.ArrayDeque
@@ -28,6 +29,8 @@ class GameAccessibilityService : AccessibilityService() {
     private var missingFramesSince = 0L
     private var noCandidatesSince = 0L
     private var wrongAppChecks = 0
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var lastRecoveryTime = 0L
     @Volatile private var lastWindowPackage: String? = null
 
     override fun onServiceConnected() {
@@ -40,6 +43,12 @@ class GameAccessibilityService : AccessibilityService() {
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkg = event.packageName?.toString()
             if (!pkg.isNullOrBlank()) lastWindowPackage = pkg
+            val now = System.currentTimeMillis()
+            if (now - lastRecoveryTime > 20_000 &&
+                getSystemService(KeyguardManager::class.java)?.isKeyguardLocked != true) {
+                lastRecoveryTime = now
+                ScheduledJobs.recover(this).forEach(::enqueue)
+            }
         }
     }
     override fun onInterrupt() { stopAll() }
@@ -60,6 +69,7 @@ class GameAccessibilityService : AccessibilityService() {
         lastBefore = null
         isDispatching = false
         if (::brain.isInitialized) brain.resetSession()
+        releaseWakeLock()
         Events.record(this, "Stopped")
     }
     private fun startNext() {
@@ -91,13 +101,14 @@ class GameAccessibilityService : AccessibilityService() {
         missingFramesSince = 0L
         noCandidatesSince = 0L
         brain.resetSession()
-        ScheduledJobs.started(this, p)
         expiry = System.currentTimeMillis() + p.maxMinutes * 60_000L
         generation++
         val id = generation
         try {
             launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
             startActivity(launch)
+            ScheduledJobs.started(this, p)
+            acquireWakeLock(p.maxMinutes * 60_000L + 10_000L)
             Events.record(this, "Launching ${p.title}")
             main.postDelayed({ if (generation == id) {
                 if (p.adaptive) adapt(p, id) else scripted(p, 0, id)
@@ -116,8 +127,23 @@ class GameAccessibilityService : AccessibilityService() {
         active = null
         lastAction = null
         lastBefore = null
+        releaseWakeLock()
         generation++
         main.post { startNext() }
+    }
+    private fun acquireWakeLock(maxDuration: Long) {
+        releaseWakeLock()
+        try {
+            val manager = getSystemService(PowerManager::class.java)
+            wakeLock = manager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AsterionPilot:game-session")
+                .apply { setReferenceCounted(false); acquire(maxDuration.coerceIn(1000L, 7_300_000L)) }
+        } catch (error: Exception) {
+            Events.record(this, "CPU wakelock unavailable: ${error.javaClass.simpleName}")
+        }
+    }
+    private fun releaseWakeLock() {
+        try { if (wakeLock?.isHeld == true) wakeLock?.release() } catch (_: Exception) {}
+        wakeLock = null
     }
     private fun currentPackageMatches(p: GameProfile): Boolean {
         val node = rootInActiveWindow
