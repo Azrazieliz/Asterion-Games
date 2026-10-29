@@ -26,6 +26,7 @@ class MainActivity : Activity() {
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 30)
         }
+        InstalledGames.autoLink(this)
         render()
     }
     override fun onResume() { super.onResume(); if (::container.isInitialized) render() }
@@ -62,7 +63,12 @@ class MainActivity : Activity() {
                 .setMessage(Events.history(this).take(5000).ifBlank { "No activity yet." })
                 .setPositiveButton("Close", null).show()
         }
-        text("Games (tap Edit to set installed package, goals and schedule)", 17)
+        button("Auto-link installed games") {
+            val linked = InstalledGames.autoLink(this)
+            Toast.makeText(this, "$linked newly matched installed games", Toast.LENGTH_LONG).show()
+            render()
+        }
+        text("Games (matched automatically where possible; tap Edit for schedules or unmatched titles)", 17)
         Profiles.all(this).forEach { p ->
             val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
             val status = if (p.enabled) "Scheduled" else "Off"
