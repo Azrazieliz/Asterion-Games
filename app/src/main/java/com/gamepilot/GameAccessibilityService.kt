@@ -62,7 +62,7 @@ class GameAccessibilityService : AccessibilityService() {
             if (active == null) startNext()
         }
     }
-    fun stopAll() {
+    fun stopAll(cancelPending: Boolean = false) {
         generation++
         main.removeCallbacksAndMessages(null)
         queue.clear()
@@ -72,7 +72,8 @@ class GameAccessibilityService : AccessibilityService() {
         isDispatching = false
         if (::brain.isInitialized) brain.resetSession()
         releaseWakeLock()
-        Events.record(this, "Stopped")
+        if (cancelPending) ScheduledJobs.cancelAll(this)
+        Events.record(this, if (cancelPending) "User stopped all jobs" else "Controller stopped")
     }
     private fun startNext() {
         if (active != null || queue.isEmpty()) return
@@ -127,7 +128,8 @@ class GameAccessibilityService : AccessibilityService() {
         if (id != generation) return
         active?.let { game ->
             Events.record(this, "Session ended ${game.title}. VERIFIED goals only: ${brain.summary(game)}")
-            ScheduledJobs.finished(this, game)
+            val hasObjectives = GoalSettings.get(this, game.id).any { it.enabled }
+            ScheduledJobs.finished(this, game, hasObjectives && brain.complete(game))
         }
         active = null
         lastAction = null

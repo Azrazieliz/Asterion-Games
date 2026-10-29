@@ -53,7 +53,7 @@ class MainActivity : Activity() {
             }
         }
         button("Stop all gameplay") {
-            GameAccessibilityService.instance?.stopAll()
+            GameAccessibilityService.instance?.stopAll(cancelPending = true)
             Toast.makeText(this, "Gameplay queue stopped", Toast.LENGTH_SHORT).show()
         }
         button("Stop live screen access") {
