@@ -91,39 +91,41 @@ class ExperienceGraph(context: Context) {
             Events.record(dbHelperContext, "Trajectory verification error: ${error.javaClass.simpleName}")
         }
     }
-    private fun evidenceDownstream(db: SQLiteDatabase, gameId: Int, goal: String, scene: String): Int {
-        db.rawQuery(
-            "SELECT COALESCE(SUM(verified),0) FROM trajectory WHERE game=? AND goal=? AND scene=?",
-            arrayOf(gameId.toString(), goal, scene)
-        ).use { cursor ->
-            return if (cursor.moveToFirst()) cursor.getInt(0) else 0
-        }
-    }
+    /**
+     * Find a previously observed sequence toward actual game-result evidence.
+     * Only game+goal-local trajectories are consulted. No image files are stored.
+     */
     @Synchronized fun recommend(game: GameProfile, goal: GameGoal, scene: String): Edge? {
         return try {
             val db = dbHelper.readableDatabase
-            val edges = mutableListOf<Edge>()
+            val rows = mutableListOf<Pair<String, Edge>>()
             db.query("trajectory",
-                arrayOf("action", "label", "x", "y", "destination", "attempts", "changes", "verified"),
-                "game=? AND goal=? AND scene=?", arrayOf(game.id.toString(), goal.id, scene),
-                null, null, "verified DESC, changes DESC", "30"
+                arrayOf("scene", "action", "label", "x", "y", "destination",
+                    "attempts", "changes", "verified"),
+                "game=? AND goal=?", arrayOf(game.id.toString(), goal.id),
+                null, null, "updatedAt DESC", "25000"
             ).use { cursor ->
                 while (cursor.moveToNext()) {
-                    edges.add(Edge(cursor.getString(0), cursor.getString(1),
-                        cursor.getFloat(2), cursor.getFloat(3), cursor.getString(4),
-                        cursor.getInt(5), cursor.getInt(6), cursor.getInt(7)))
+                    val state = cursor.getString(0)
+                    val edge = Edge(cursor.getString(1), cursor.getString(2),
+                        cursor.getFloat(3), cursor.getFloat(4), cursor.getString(5),
+                        cursor.getInt(6), cursor.getInt(7), cursor.getInt(8))
+                    if (edge.x in 0f..1f && edge.y in 0f..1f)
+                        rows.add(state to edge)
                 }
             }
-            edges.filter { it.x in 0f..1f && it.y in 0f..1f &&
-                it.attempts >= 1 && it.changes > 0 &&
-                (it.verified > 0 || evidenceDownstream(db, game.id, goal.id, it.destination) > 0)
-            }.maxByOrNull { edge ->
-                edge.verified * 20.0 +
-                    evidenceDownstream(db, game.id, goal.id, edge.destination) * 5.0 +
-                    edge.changes.toDouble() / edge.attempts.coerceAtLeast(1)
+            val possible = rows.map { (state, e) ->
+                RouteEdge(state, e.destination, e.actionKey, e.label,
+                    e.attempts, e.changes, e.verified)
             }
+            val best = RoutePlanner.ranked(scene, possible).firstOrNull { ranked ->
+                !GameKnowledge.dangerous(ranked.edge.label)
+            } ?: return null
+            rows.firstOrNull { (state, e) ->
+                state == scene && e.actionKey == best.edge.actionKey
+            }?.second
         } catch (error: Exception) {
-            Events.record(dbHelperContext, "Trajectory lookup error: ${error.javaClass.simpleName}")
+            Events.record(dbHelperContext, "Route lookup error: ${error.javaClass.simpleName}")
             null
         }
     }
