@@ -1,0 +1,44 @@
+name: Frozen Canonical Specification Integrity
+
+# Do not weaken or remove this guard without the owner's explicit authorization
+# of the exact modification to the canonical document and the guard itself.
+# For actual GitHub server-side rejection, make this a required status check
+# under a branch protection rule or repository ruleset.
+on:
+  push:
+    branches: [main, 'canon/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-frozen-spec:
+    name: Verify immutable purpose and architecture baseline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout candidate revision
+        uses: actions/checkout@v4
+      - name: Fail on any unauthorized modification, replacement, or deletion
+        shell: bash
+        run: |
+          set -euo pipefail
+          readonly FILE='docs/CANONICAL_PURPOSE_AND_ARCHITECTURE_LOCKED.md'
+          readonly EXPECTED_BLOB='980da9decedec45e004a896ecb476c78d2bdcfaf'
+          readonly SNAPSHOT_COMMIT='71e0b3038ba84103ef55bbab37cab7974a342a21'
+          if [[ ! -f "$FILE" ]]; then
+            echo "::error::FROZEN CANONICAL DOCUMENT MISSING: $FILE"
+            exit 1
+          fi
+          ACTUAL_BLOB="$(git hash-object "$FILE")"
+          echo "Frozen canonical commit: $SNAPSHOT_COMMIT"
+          echo "Expected canonical Git blob SHA-1: $EXPECTED_BLOB"
+          echo "Current canonical Git blob SHA-1:  $ACTUAL_BLOB"
+          if [[ "$ACTUAL_BLOB" != "$EXPECTED_BLOB" ]]; then
+            echo "::error::CANONICAL SPEC MODIFIED WITHOUT EXACT USER AUTHORIZATION."
+            echo "::error::Restore the frozen baseline. Proposed changes must first receive explicit authorization for the exact diff."
+            exit 1
+          fi
+          echo "Frozen canonical purpose and architecture document matches original committed contents."
