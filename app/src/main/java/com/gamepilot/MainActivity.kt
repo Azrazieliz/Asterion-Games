@@ -1,6 +1,7 @@
 package com.gamepilot
 
 import android.Manifest
+import java.io.ByteArrayOutputStream
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
@@ -14,6 +15,8 @@ import android.widget.*
 class MainActivity : Activity() {
     private lateinit var container: LinearLayout
     private val projectionRequest = 101
+    private val exportRequest = 102
+    private val importRequest = 103
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,6 +67,21 @@ class MainActivity : Activity() {
             AlertDialog.Builder(this).setTitle("Automation history")
                 .setMessage(Events.history(this).take(5000).ifBlank { "No activity yet." })
                 .setPositiveButton("Close", null).show()
+        }
+        button("Export profiles + learned game mastery") {
+            val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "application/json"
+                putExtra(Intent.EXTRA_TITLE, "AsterionPilot-learning-backup.json")
+            }
+            startActivityForResult(intent, exportRequest)
+        }
+        button("Restore saved game mastery") {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "application/json"
+            }
+            startActivityForResult(intent, importRequest)
         }
         button("Auto-link installed games") {
             val linked = InstalledGames.autoLink(this)
@@ -293,6 +311,43 @@ class MainActivity : Activity() {
             startForegroundService(intent)
         } else if (requestCode == projectionRequest) {
             Toast.makeText(this, "Live screen permission was not granted", Toast.LENGTH_LONG).show()
+        } else if (resultCode == Activity.RESULT_OK && data?.data != null && requestCode == exportRequest) {
+            try {
+                val bytes = GameDataVault.export(this)
+                contentResolver.openOutputStream(data.data!!, "w")?.use { it.write(bytes) }
+                    ?: error("Cannot write selected file")
+                Toast.makeText(this, "Exported ${bytes.size} bytes", Toast.LENGTH_LONG).show()
+            } catch (error: Exception) {
+                Toast.makeText(this, "Export failed: ${error.message}", Toast.LENGTH_LONG).show()
+            }
+        } else if (resultCode == Activity.RESULT_OK && data?.data != null && requestCode == importRequest) {
+            val uri = data.data!!
+            AlertDialog.Builder(this)
+                .setTitle("Restore profiles and learned game data?")
+                .setMessage("This replaces existing profiles, objective history and learned trajectories.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Restore") { _, _ ->
+                    try {
+                        val bytes = contentResolver.openInputStream(uri)?.use { input ->
+                            val buffer = ByteArrayOutputStream()
+                            val chunk = ByteArray(32768)
+                            var total = 0
+                            while (true) {
+                                val length = input.read(chunk)
+                                if (length < 0) break
+                                total += length
+                                require(total <= 24 * 1024 * 1024) { "Backup exceeds 24 MB" }
+                                buffer.write(chunk, 0, length)
+                            }
+                            buffer.toByteArray()
+                        } ?: error("Cannot read backup")
+                        GameDataVault.restore(this, bytes)
+                        render()
+                        Toast.makeText(this, "Game learning restored", Toast.LENGTH_LONG).show()
+                    } catch (error: Exception) {
+                        Toast.makeText(this, "Restore failed: ${error.message}", Toast.LENGTH_LONG).show()
+                    }
+                }.show()
         }
     }
 }
