@@ -127,4 +127,62 @@ class ExperienceGraph(context: Context) {
             null
         }
     }
+    /** Export only learned state/action statistics. No screenshots or raw screen frames. */
+    @Synchronized fun exportJson(): org.json.JSONArray {
+        val all = org.json.JSONArray()
+        val db = dbHelper.readableDatabase
+        db.query("trajectory", null, null, null, null, null, "updatedAt DESC", "25000")
+            .use { cursor ->
+                val columns = arrayOf("game", "goal", "scene", "action", "label",
+                    "x", "y", "destination", "attempts", "changes", "verified", "updatedAt")
+                while (cursor.moveToNext()) {
+                    val row = org.json.JSONObject()
+                    columns.forEach { column ->
+                        val index = cursor.getColumnIndexOrThrow(column)
+                        when (column) {
+                            "game", "attempts", "changes", "verified" -> row.put(column, cursor.getInt(index))
+                            "updatedAt" -> row.put(column, cursor.getLong(index))
+                            "x", "y" -> row.put(column, cursor.getDouble(index))
+                            else -> row.put(column, cursor.getString(index))
+                        }
+                    }
+                    all.put(row)
+                }
+            }
+        return all
+    }
+    @Synchronized fun importJson(records: org.json.JSONArray) {
+        require(records.length() <= 25000) { "Too many trajectory records" }
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        try {
+            db.delete("trajectory", null, null)
+            for (i in 0 until records.length()) {
+                val row = records.getJSONObject(i)
+                val game = row.getInt("game")
+                val x = row.getDouble("x")
+                val y = row.getDouble("y")
+                require(game in 1..26 && x in 0.0..1.0 && y in 0.0..1.0) {
+                    "Invalid record at index $i"
+                }
+                val values = ContentValues().apply {
+                    put("game", game)
+                    put("goal", row.getString("goal").take(32))
+                    put("scene", row.getString("scene").take(300))
+                    put("action", row.getString("action").take(150))
+                    put("label", row.getString("label").take(150))
+                    put("x", x)
+                    put("y", y)
+                    put("destination", row.getString("destination").take(300))
+                    put("attempts", row.getInt("attempts").coerceIn(0, 1000000))
+                    put("changes", row.getInt("changes").coerceIn(0, 1000000))
+                    put("verified", row.getInt("verified").coerceIn(0, 1000000))
+                    put("updatedAt", row.optLong("updatedAt", 0L))
+                }
+                db.insertOrThrow("trajectory", null, values)
+            }
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
 }
