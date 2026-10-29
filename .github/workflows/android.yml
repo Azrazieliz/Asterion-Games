@@ -28,8 +28,23 @@ jobs:
       - name: Restore persistent CI debug signer
         uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: asterion-pilot-ci-debug-signing-v1
+          path: .ci-signing/debug.keystore
+          key: asterion-pilot-ci-debug-signing-v2
+      - name: Ensure reusable CI debug keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-signing
+          if [[ ! -f .ci-signing/debug.keystore ]]; then
+            keytool -genkeypair -noprompt -storetype PKCS12 \
+              -keystore .ci-signing/debug.keystore \
+              -storepass android -keypass android -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Asterion Pilot CI Debug,O=Android,C=US"
+          fi
+          test -s .ci-signing/debug.keystore
+          keytool -list -keystore .ci-signing/debug.keystore \
+            -storepass android -alias androiddebugkey
       - name: Assemble debug APK
         run: gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
       - name: Record APK signing certificate

@@ -1,10 +1,18 @@
-# APK Signing Continuity — Asterion Pilot
+# APK signing — current implementation
 
-- The existing GitHub-generated debug APKs used default runner signing keys and cannot be assumed mutually upgrade-compatible.
-- The GitHub Actions workflow now caches its own `~/.android/debug.keystore` under `asterion-pilot-ci-debug-signing-v1` so subsequent CI builds can reuse the **same debug certificate while that cache exists**.
-- A reproducible debug signer is **not** a production signer: GitHub caches can expire, be evicted, or be invalidated. Reinstallation may still be necessary if the signer changes.
-- Each APK artifact now contains `SIGNING_CERTIFICATE.txt` showing the SHA-256 signing identity. Compare the fingerprints before replacing an existing installation. If the fingerprints differ, Android will reject an in-place install.
-- **Preserve installed game learning** by exporting game data in the app before any uncertain installer update, particularly if uninstalling.
-- The repository contains **no production signing private key**. A stable production signing keystore kept in a private secret store is required for guaranteed long-term update continuity.
-- Never commit a production signing key or signing passwords to this public repository.
-- This document does not alter the canonical purpose and architecture specification.
+The production signing identity has **not** been configured. Do not publish any production private key in this public repository.
+
+## CI debug signing (best-effort continuity)
+
+The workflow creates an explicit `.ci-signing/debug.keystore` if no cached key exists, configures the Android Gradle Plugin to use it, and persists the keystore using GitHub Actions cache key `asterion-pilot-ci-debug-signing-v2`. This corrects the previous ineffective cache path `~/.android/debug.keystore`, which was confirmed absent from the runner.
+
+Every build verifies its APK with Android's `apksigner` and includes `SIGNING_CERTIFICATE.txt` with the signer SHA-256 fingerprint. **A second independent CI build must be checked before claiming cross-build certificate stability.**
+
+Cache entries can expire or be evicted. Even when successive debug builds have matching certificates, this is not a durable production signing system. Releases need one securely backed-up keystore stored in private CI secrets.
+
+## Installation compatibility
+
+- Existing v0.2.0/debug APKs may have unrelated certificates. Android rejects an in-place update signed by a different certificate.
+- Export the learning backup **before** a potentially incompatible upgrade; uninstalling a package normally removes its local data.
+- A new v0.3.0 APK can update another APK of the same package only if the Android signing certificate matches.
+- The signing certificate fingerprint is provided with each GitHub Actions artifact so incompatibility can be detected without guessing.

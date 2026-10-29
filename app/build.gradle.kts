@@ -1,5 +1,16 @@
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
+val ciDebugKey = rootProject.file(".ci-signing/debug.keystore")
 android {
+    signingConfigs {
+        getByName("debug") {
+            if (ciDebugKey.isFile) {
+                storeFile = ciDebugKey
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
     namespace = "com.gamepilot"
     compileSdk = 35
     defaultConfig {
