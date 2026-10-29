@@ -130,6 +130,15 @@ class MainActivity : Activity() {
                         .setPositiveButton("Close", null).show()
                 }
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            row.addView(Button(this).apply {
+                text = "Game-specific farming / daily playbook"
+                setOnClickListener {
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle(p.title + " — gameplay plan")
+                        .setMessage(GamePlaybooks.overview(p.id))
+                        .setPositiveButton("Close", null).show()
+                }
+            })
             row.addView(taskControls)
             row.addView(Button(this).apply {
                 text = "Inspect learned gameplay history"

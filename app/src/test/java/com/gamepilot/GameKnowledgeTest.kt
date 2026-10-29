@@ -31,6 +31,14 @@ class GameKnowledgeTest {
         assertFalse(GameKnowledge.dangerous("Daily Mission"))
         assertFalse(GameKnowledge.dangerous("Collect"))
     }
+    @Test fun gameSpecificLearningSeedsAreIsolated() {
+        assertTrue(GamePlaybooks.cues(6, GoalType.FARMING).contains("calyx"))
+        assertTrue(GamePlaybooks.cues(8, GoalType.DAILIES).contains("公開求人"))
+        assertTrue(GamePlaybooks.cues(3, GoalType.FARMING).contains("interception"))
+        assertTrue(GamePlaybooks.cues(15, GoalType.FARMING).isEmpty())
+        assertFalse(GamePlaybooks.cues(6, GoalType.FARMING).contains("interception"))
+    }
+
     @Test fun normalizationRetainsMultilingualLabels() {
         assertEquals("daily tasks", GameKnowledge.normalize("  DAILY   TASKS "))
         assertEquals("受取", GameKnowledge.normalize("受取"))

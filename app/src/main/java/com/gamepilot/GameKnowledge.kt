@@ -70,7 +70,7 @@ object GameKnowledge {
             GoalType.DAILIES -> daily + collect
             GoalType.FARMING -> farm + (selectedGames[game.id] ?: emptyList())
         }
-        return (base + goal.customCues).map(::normalize).distinct()
+        return (GamePlaybooks.cues(game.id, goal.type) + base + goal.customCues).map(::normalize).distinct()
     }
     fun explicitSuccess(goal: GameGoal, label: String): Boolean {
         val cues = when (goal.type) {
