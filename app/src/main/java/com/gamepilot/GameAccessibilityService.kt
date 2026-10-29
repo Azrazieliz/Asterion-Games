@@ -143,11 +143,13 @@ class GameAccessibilityService : AccessibilityService() {
             finish(id); return
         }
         wrongAppChecks = 0
-        val frame = VisionBus.latest
+        val live = VisionBus.latest
+        val frame = if (live != null && System.currentTimeMillis() - live.time <= 3_000L) live
+            else UiTreePerception.snapshot(rootInActiveWindow, resources.displayMetrics)
         if (frame == null || System.currentTimeMillis() - frame.time > 3_000) {
             if (missingFramesSince == 0L) {
                 missingFramesSince = System.currentTimeMillis()
-                Events.record(this, "${p.title}: no live frames; cannot navigate without perception")
+                Events.record(this, "${p.title}: no live pixels or accessible UI elements; cannot navigate without perception")
             }
             if (System.currentTimeMillis() - missingFramesSince >= 30_000) {
                 brain.unresolved(p, "Live perception unavailable for 30 seconds")
