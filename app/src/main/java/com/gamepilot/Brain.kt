@@ -4,8 +4,10 @@ import android.content.Context
 import android.graphics.Rect
 import org.json.JSONObject
 import kotlin.math.abs
+import kotlin.math.ln
+import kotlin.math.sqrt
 
-/** OCR coordinates and coarse live-frame features, all transient in RAM. No screenshot files. */
+/** Live transient frame descriptors only: no screenshot navigation or stored bitmap history. */
 data class SeenText(val label: String, val bounds: Rect)
 data class LiveFrame(
     val time: Long,
@@ -17,71 +19,188 @@ data class LiveFrame(
     fun sceneKey(): String {
         val tileKey = tiles.filterIndexed { i, _ -> i % 3 == 0 }
             .joinToString("") { (it / 48).coerceIn(0, 5).toString() }
-        val textKey = texts.map { it.label.lowercase().trim() }.filter { it.length >= 3 }
-            .sorted().take(10).joinToString(",").take(60)
+        val textKey = texts.map { GameKnowledge.normalize(it.label) }
+            .filter { it.length >= 3 }.sorted().take(12).joinToString(",").take(90)
         return "$tileKey:$textKey"
     }
+    fun textValues(): List<String> = texts.map { GameKnowledge.normalize(it.label) }
 }
 object VisionBus {
     @Volatile var latest: LiveFrame? = null
     fun reset() { latest = null }
 }
 
-/** Action values are learned separately for every game and observed visual state. */
+/**
+ * Per-game contextual bandit with persistent evidence and explicit result verification.
+ * Scene changes are small training signals only, never proof of task completion.
+ */
 class Brain(private val context: Context) {
-    private val preferences = context.getSharedPreferences("learned_policy_v1", 0)
-    private val affirmative = listOf(
-        "claim", "collect", "reward", "daily", "mission", "quest", "dispatch",
-        "start", "repeat", "auto", "continue", "complete", "receive", "skip",
-        "confirm", "accept", "next", "领取", "领取奖励", "日常", "報酬",
-        "受取", "一括", "開始", "確認", "次へ", "完了", "受け取る",
-        "出撃", "周回", "戦闘", "挑戦", "再戦", "自動", "スキップ", "任務", "デイリー",
-        "领取", "收取", "奖励", "自动", "开始", "完成", "挂机"
+    data class Choice(
+        val action: GameAction,
+        val key: String,
+        val scene: String,
+        val goal: GameGoal,
+        val label: String
     )
-    private val blocked = listOf(
-        "purchase", "shop", "buy", "top up", "recharge", "checkout",
-        "payment", "delete", "unlink", "购买", "充值", "課金", "購入", "削除"
+    data class Feedback(val changed: Boolean, val explicitEvidence: Boolean)
+
+    private data class PendingProof(
+        val gameId: Int,
+        val goal: GameGoal,
+        val actionKey: String,
+        val label: String,
+        val observedTime: Long
     )
-    data class Choice(val action: GameAction, val key: String, val scene: String)
-    private fun value(key: String): Double = preferences.getFloat(key, 0f).toDouble()
-    private fun encode(p: GameProfile, scene: String, target: String): String =
-        "${p.id}:${scene.hashCode()}:${target.lowercase().trim().hashCode()}"
-    fun choose(p: GameProfile, frame: LiveFrame): Choice? {
+    private val ledger = GoalLedger(context)
+    private val prefs = context.getSharedPreferences("mastery_policy_v2", 0)
+    private var pending: PendingProof? = null
+    private val currentAttempts = mutableMapOf<String, Int>()
+    private val totalByScene = mutableMapOf<String, Int>()
+    private var lastConfirmedAt = 0L
+
+    fun resetSession() {
+        pending = null
+        currentAttempts.clear()
+        totalByScene.clear()
+    }
+    private fun fingerprint(game: Int, goal: GameGoal, scene: String, label: String): String =
+        "$game:${goal.id}:${scene.hashCode()}:${label.hashCode()}"
+    private fun get(key: String): JSONObject =
+        try { JSONObject(prefs.getString(key, "{}") ?: "{}") } catch (_: Exception) { JSONObject() }
+    private fun recordedScore(key: String): Double {
+        val json = get(key)
+        val attempts = json.optInt("attempts", 0)
+        val positive = json.optInt("positive", 0)
+        val negative = json.optInt("negative", 0)
+        val wins = json.optInt("verified", 0)
+        val conservative = (positive + wins * 5.0 - negative * 1.5) / (attempts + 3.0)
+        return conservative + 0.15 * sqrt(ln(attempts + 2.0) / (attempts + 1.0))
+    }
+    private fun update(key: String, positive: Boolean, verified: Boolean) {
+        val old = get(key)
+        val attempts = old.optInt("attempts", 0) + 1
+        val successes = old.optInt("positive", 0) + if (positive) 1 else 0
+        val failures = old.optInt("negative", 0) + if (positive) 0 else 1
+        val wins = old.optInt("verified", 0) + if (verified) 1 else 0
+        val updated = JSONObject().put("attempts", attempts)
+            .put("positive", successes).put("negative", failures).put("verified", wins)
+            .put("updatedAt", System.currentTimeMillis())
+        prefs.edit().putString(key, updated.toString()).apply()
+    }
+
+    /**
+     * Wait for two separate live observations of a contextual result before marking a goal.
+     * Pending proof is tied to a recent action and to its specific game and goal.
+     */
+    fun confirmPending(game: GameProfile, frame: LiveFrame): Boolean {
+        val proof = pending ?: return false
+        if (game.id != proof.gameId) { pending = null; return false }
+        if (frame.time <= proof.observedTime) return true
+        val values = frame.textValues()
+        val stillPresent = values.any { GameKnowledge.explicitSuccess(proof.goal, it) }
+        if (stillPresent && frame.time - proof.observedTime < 10_000L) {
+            ledger.verify(game.id, proof.goal, proof.label)
+            update(proof.actionKey, positive = true, verified = true)
+            lastConfirmedAt = frame.time
+            Events.record(context, "${game.title}: VERIFIED ${proof.goal.title}")
+        } else {
+            Events.record(context, "${game.title}: evidence disappeared before confirmation")
+        }
+        pending = null
+        return false
+    }
+
+    fun choose(game: GameProfile, frame: LiveFrame): Choice? {
+        if (pending != null) return null
+        if (GameKnowledge.screenUnsafe(frame)) {
+            Events.record(context, "${game.title}: transaction/destructive dialogue; automation paused")
+            return null
+        }
+        val goals = GoalSettings.get(context, game.id).filter { it.enabled }
+        val pendingGoals = goals.filter {
+            val status = ledger.read(game.id, it).status
+            status != GoalStatus.VERIFIED && status != GoalStatus.BLOCKED
+        }
+        if (pendingGoals.isEmpty()) return null
         val scene = frame.sceneKey()
-        val targets = frame.texts.mapNotNull { seen ->
-            val label = seen.label.lowercase().trim()
-            if (blocked.any { label.contains(it) }) return@mapNotNull null
-            val matches = affirmative.count { label.contains(it) }
-            if (matches == 0) return@mapNotNull null
-            val box = seen.bounds
-            if (box.isEmpty || frame.width <= 0 || frame.height <= 0) return@mapNotNull null
-            val x = box.centerX().toFloat() / frame.width
-            val y = box.centerY().toFloat() / frame.height
-            if (x !in 0f..1f || y !in 0f..1f) return@mapNotNull null
-            val key = encode(p, scene, label)
-            Triple(Choice(GameAction.Tap(x, y), key, scene), value(key) + matches, label)
+        data class Candidate(val choice: Choice, val score: Double)
+        val all = mutableListOf<Candidate>()
+        for (goal in pendingGoals) {
+            val hints = GameKnowledge.candidates(game, goal)
+            val priority = when (goal.type) {
+                GoalType.REWARDS -> 0.6
+                GoalType.DAILIES -> 0.4
+                GoalType.FARMING -> 0.2
+            }
+            frame.texts.forEach { seen ->
+                if (seen.bounds.isEmpty || frame.width < 1 || frame.height < 1) return@forEach
+                val word = GameKnowledge.normalize(seen.label)
+                if (GameKnowledge.dangerous(word)) return@forEach
+                val strength = hints.maxOfOrNull { cue ->
+                    when {
+                        word == cue -> 3.0
+                        word.length >= 3 && word.contains(cue) -> 2.0
+                        cue.length >= 4 && cue.contains(word) -> 0.3
+                        else -> 0.0
+                    }
+                } ?: 0.0
+                if (strength <= 0) return@forEach
+                val x = seen.bounds.centerX().toFloat() / frame.width
+                val y = seen.bounds.centerY().toFloat() / frame.height
+                if (x !in 0f..1f || y !in 0f..1f) return@forEach
+                val label = "ocr:$word"
+                val key = fingerprint(game.id, goal, scene, label)
+                val attempts = currentAttempts[key] ?: 0
+                if (attempts >= 2) return@forEach
+                all.add(Candidate(Choice(GameAction.Tap(x, y), key, scene, goal, label),
+                    strength + priority + recordedScore(key) - attempts * 2.0))
+            }
+            // Explicitly configured actions can be learned against the current observed scene.
+            game.actions.filterIsInstance<GameAction.Tap>().forEachIndexed { index, tap ->
+                val label = "configured:$index"
+                val key = fingerprint(game.id, goal, scene, label)
+                val attempts = currentAttempts[key] ?: 0
+                if (attempts < 2) all.add(Candidate(Choice(tap, key, scene, goal, label),
+                    priority + recordedScore(key) - attempts * 2.0))
+            }
         }
-        val scripted = p.actions.filterIsInstance<GameAction.Tap>().mapIndexed { index, action ->
-            val key = encode(p, scene, "tap-$index")
-            Triple(Choice(action, key, scene), value(key), "tap-$index")
-        }
-        // Candidate selection is deterministic; negative feedback suppresses nonproductive actions.
-        return (targets + scripted).maxWithOrNull(
-            compareBy<Triple<Choice, Double, String>> { it.second }
-                .thenBy { -it.third.length }
-        )?.first
+        return all.maxByOrNull { it.score }?.choice
     }
-    fun learn(p: GameProfile, chosen: Choice, before: LiveFrame, after: LiveFrame) {
-        val delta = if (before.tiles.size == after.tiles.size && before.tiles.isNotEmpty()) {
+
+    fun actionSent(game: GameProfile, choice: Choice) {
+        currentAttempts[choice.key] = (currentAttempts[choice.key] ?: 0) + 1
+        val sceneCount = (totalByScene[choice.scene] ?: 0) + 1
+        totalByScene[choice.scene] = sceneCount
+        ledger.attempt(game.id, choice.goal)
+        Events.record(context, "${game.title}: ${choice.goal.id}, ${choice.label}; scene actions=$sceneCount")
+    }
+
+    fun learn(game: GameProfile, choice: Choice, before: LiveFrame, after: LiveFrame): Feedback {
+        val delta = if (before.tiles.size == after.tiles.size && before.tiles.isNotEmpty())
             before.tiles.indices.sumOf { abs(before.tiles[it] - after.tiles[it]).toDouble() } / before.tiles.size
-        } else 0.0
-        val oldText = before.texts.map { it.label.lowercase() }.toSet()
-        val newText = after.texts.map { it.label.lowercase() }.toSet()
-        val usefulChange = delta > 12 || oldText != newText
-        // This is a proxy for visual progress, not proof that a daily or farm succeeded.
-        val reward = if (usefulChange) 0.6 else -0.8
-        val learned = (value(chosen.key) * 0.80 + reward * 0.20).coerceIn(-5.0, 5.0)
-        preferences.edit().putFloat(chosen.key, learned.toFloat()).apply()
-        Events.record(context, "${p.title}: state changed=$usefulChange, learned value=${"%.2f".format(learned)}")
+            else 0.0
+        val previousText = before.textValues().toSet()
+        val currentText = after.textValues().toSet()
+        val changed = delta > 14.0 || previousText != currentText
+        // Never interpret mere navigation, scene change or tap dispatch as a verified result.
+        update(choice.key, positive = changed, verified = false)
+        val evidence = currentText.firstOrNull { label ->
+            label !in previousText && GameKnowledge.explicitSuccess(choice.goal, label)
+        }
+        if (evidence != null) {
+            pending = PendingProof(game.id, choice.goal, choice.key, evidence, after.time)
+            Events.record(context, "${game.title}: candidate goal evidence ${evidence.take(80)}")
+        }
+        return Feedback(changed, evidence != null)
     }
+    fun unresolved(game: GameProfile, reason: String) {
+        GoalSettings.get(context, game.id).filter { it.enabled }.forEach { goal ->
+            val old = ledger.read(game.id, goal)
+            if (old.status != GoalStatus.VERIFIED)
+                ledger.block(game.id, goal, reason)
+        }
+    }
+    fun complete(game: GameProfile): Boolean = GoalSettings.get(context, game.id)
+        .filter { it.enabled }.all { ledger.read(game.id, it).status == GoalStatus.VERIFIED }
+    fun summary(game: GameProfile): String = ledger.report(game.id)
 }
