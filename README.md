@@ -1,32 +1,38 @@
-# Asterion Pilot — Android Game Automation
+# Asterion Pilot — Android Autonomous Game Agent
 
-Asterion Pilot is the continuation of the existing GamePilot Android source, now committed to the user's newly created [Asterion-Pilot repository](https://github.com/Azrazieliz/Asterion-Pilot). This is an **in-progress automation application**, not a claimed fully autonomous master of 26 games.
+**Canonical product purpose:** Read [the frozen specification](docs/CANONICAL_PURPOSE_AND_ARCHITECTURE_LOCKED.md). Its purpose and architecture may not be changed without user authorization of the exact modification.
 
-## Implemented in source
+**Current implementation (v0.3.0):** An Android game automation foundation with direct Accessibility gestures, on-device live display perception, a scheduled queue, per-game objectives and persistent local learning. This code has not yet demonstrated autonomous mastery of the 26 games.
 
-- **26 separate game profiles** transcribed from the supplied Android launcher image. Where launcher names are truncated, names remain explicitly incomplete pending on-device package identification.
-- Installed-app picker (Android launcher enumeration) and editable per-game package, local daily start time, per-session timeout, adaptive/scripted mode, and optional actions.
-- Android AccessibilityService direct on-screen gesture injection (taps and swipes), accessibility text clicks for scripted mode, sequential task queue, stop control.
-- Daily alarms, permission-aware exact scheduling, rescheduling on reboot/time/timezone changes; wake/launch attempts and status logging.
-- Live MediaProjection **continuous frame stream processed in RAM**, with ML Kit OCR and coarse visual-state fingerprints. No screenshot images or captures are saved, and this does not work by exporting/periodically reading screenshot files.
-- An adaptive feedback loop: observe UI words and visual state, choose candidate actions, execute direct gestures, compare later frame state, and persist per-game scene/action preferences. This **does not yet certify completion of quests/farms**, and visual change is only a learning proxy.
-- Android GitHub Actions CI for building a debug APK, with artifact named `AsterionPilot-debug-apk`.
+## Application systems
 
-## Limitations and correctness
+- 26 game profiles from the supplied Android launcher; additional profiles can be added.
+- Automatic linking by installed package name/launcher title when unambiguous; per-game schedule and configurable daily reset hour.
+- Direct gesture execution, continuous in-memory MediaProjection/ML Kit Latin/Chinese/Japanese recognition, and Accessibility UI-tree perception when exposed by Android.
+- A per-game goal ledger (rewards, dailies, repeatable farming) with explicit post-action result evidence; state changes alone never count as success.
+- Local learning using context-specific action scores, a SQLite experience graph and verified multi-screen path planning. Experience traces are inspectable and portable, without saving screen-image files.
+- Persisted alarm tasks with retry cooldown, limited crash recovery, battery wake handling and Android orientation-aware capture.
+- Game-specific navigation cues for identifiable titles, sourced from public guides and distinguished from completed mastery.
+- User-controlled export/restore of profiles, learned trajectories and task history.
+- Automated Gradle Android build + unit tests and frozen-canon integrity verification on GitHub Actions.
 
-**Android 14+ screen projection requires fresh consent for each capture session.** A scheduled background run cannot silently obtain a MediaProjection permission token. Android may also block unattended game launches from the background and interaction while the device is locked. The app logs those blocks and does not bypass the OS security model. An authorized device-owner/privileged integration would require separate implementation and device evaluation.
+## Installation and build
 
-**Learning** presently uses OCR cues (such as Claim, Daily, Reward, Start and Japanese/Chinese equivalents), live scene change feedback and optional profile action candidates. It has no trained game-specific reward models, story/battle decision policies, reliable success detectors, account expertise or persistent mastery for the individual 26 titles. The app must not be represented as already performing complete dailies and farming in all these games.
+Source: `app/`. Java 17, Android SDK 35 and Gradle 8.11.1.
 
-**Do not use for unattended purchases.** The generic policy excludes transaction-related words, but OCR cannot guarantee that all paid/irreversible actions will be recognized. Game terms of service may restrict automation.
+```sh
+gradle :app:testDebugUnitTest :app:assembleDebug
+```
 
-## Developer build
+The CI workflow publishes an Android `app-debug.apk` and `SIGNING_CERTIFICATE.txt` in an artifact named `AsterionPilot-debug-apk`. It uses a cached, explicit **debug** signing key. This cache is not equivalent to a stable production signing secret; compare fingerprints before updating an existing installation. See [signing notes](docs/APK_SIGNING.md).
 
-Android SDK 35, JDK 17, Gradle 8.11.1 and Android Gradle Plugin 8.9.2. Build `gradle :app:assembleDebug`. GitHub Actions runs on each push to main. No signing secrets are included.
+## Status and remaining blockers
 
-## Future work to reach the requested result
+Read [implementation status](docs/IMPLEMENTATION_STATUS.md) for verified vs missing features.
 
-- Map the 26 installed package names and each game's daily/farming goals and reset behavior.
-- Replace generic OCR heuristics with game-specific semantic recognition, navigation planners, battle/farming strategies, progress/quest completion confirmation, and saved experience.
-- Introduce a privileged **user-authorized** always-on display perception/control path only if required for permission-free unattended sessions; do not misrepresent MediaProjection as capable of that.
-- Test actual device launches, language settings, Android 17 limits, rotation handling, task handoffs, battery constraints and crash recovery.
+- Real game-specific tactics and objective completion remain untrained and unverified for all 26 titles.
+- Stock Android may demand explicit MediaProjection permission for each new screen-sharing session, limit background app launches, and block interaction behind the keyguard. The app does not silently circumvent system authorization.
+- Gameplay must be measured on a real Android device before claiming full unattended completion.
+- Actual game accounts, inventories, stamina, reward claims and training demonstrations are not part of the source repository.
+
+**Source compilation and unit tests do not constitute a proven autonomous game-playing product.**
