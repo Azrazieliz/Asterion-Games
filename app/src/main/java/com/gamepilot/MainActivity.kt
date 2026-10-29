@@ -131,6 +131,15 @@ class MainActivity : Activity() {
                 }
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             row.addView(taskControls)
+            row.addView(Button(this).apply {
+                text = "Inspect learned gameplay history"
+                setOnClickListener {
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle(p.title + " — learning trace")
+                        .setMessage(EpisodeJournal(this@MainActivity).recent(p.id, 30))
+                        .setPositiveButton("Close", null).show()
+                }
+            })
             row.setPadding(0, 15, 0, 15)
             container.addView(row)
         }

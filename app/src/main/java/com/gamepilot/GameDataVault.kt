@@ -33,6 +33,7 @@ object GameDataVault {
         }
         json.put("preferences", data)
         json.put("trajectories", ExperienceGraph(context).exportJson())
+        json.put("episodes", EpisodeJournal(context).exportJson())
         return json.toString().toByteArray(Charsets.UTF_8)
     }
 
@@ -48,6 +49,7 @@ object GameDataVault {
         require(records.length() <= 25000) { "Too many learned trajectories" }
         // SQLite import is a transaction and rolls back on invalid rows.
         ExperienceGraph(context).importJson(records)
+        if (json.has("episodes")) EpisodeJournal(context).importJson(json.getJSONArray("episodes"))
         for (name in stores) {
             val store = data.getJSONObject(name)
             val editor = context.getSharedPreferences(name, 0).edit()
@@ -67,6 +69,6 @@ object GameDataVault {
             check(editor.commit()) { "Storage write failed: $name" }
         }
         Scheduler.all(context)
-        Events.record(context, "Imported game profiles, goal history and learned trajectories")
+        Events.record(context, "Imported game profiles, goal history, verified routes and learning episodes")
     }
 }
