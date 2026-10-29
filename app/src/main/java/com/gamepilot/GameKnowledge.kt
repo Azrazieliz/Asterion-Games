@@ -29,9 +29,9 @@ object GameKnowledge {
         "领取成功", "已领取", "领取完成", "获得奖励"
     )
     private val dailyDone = listOf(
-        "daily completed", "mission completed", "task completed", "all daily",
-        "ミッション達成", "任務完了", "クリア済", "完了済",
-        "每日任务完成", "任务完成", "全部完成"
+        "all daily tasks completed", "all dailies completed", "daily objectives complete",
+        "デイリー全達成", "全ミッション完了", "すべての任務完了",
+        "每日任务全部完成", "所有日常任务完成", "全部任务完成"
     )
     private val farmDone = listOf(
         "victory", "battle results", "clear!", "stage clear", "mission clear",

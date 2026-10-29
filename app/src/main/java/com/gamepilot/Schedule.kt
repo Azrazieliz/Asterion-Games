@@ -25,10 +25,15 @@ object Scheduler {
             set(Calendar.MILLISECOND, 0)
             if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_YEAR, 1)
         }.timeInMillis
-        if (Build.VERSION.SDK_INT >= 31 && !manager.canScheduleExactAlarms()) {
+        try {
+            if (Build.VERSION.SDK_INT >= 31 && !manager.canScheduleExactAlarms()) {
+                manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, whenMillis, pending)
+                Events.record(context, "Inexact alarm for ${p.title}: exact-alarm permission missing")
+            } else manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, whenMillis, pending)
+        } catch (error: SecurityException) {
             manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, whenMillis, pending)
-            Events.record(context, "Inexact alarm for ${p.title}: exact-alarm permission missing")
-        } else manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, whenMillis, pending)
+            Events.record(context, "${p.title}: exact alarm denied, fallback inexact")
+        }
     }
     fun all(context: Context) = Profiles.all(context).forEach { schedule(context, it) }
 }
@@ -38,19 +43,24 @@ class ScheduleReceiver : BroadcastReceiver() {
         val p = Profiles.all(context).find { it.id == intent.getIntExtra("profileId", -1) } ?: return
         Scheduler.schedule(context, p)
         if (!p.enabled || p.packageName.isBlank()) return
+        ScheduledJobs.enqueue(context, p)
         val service = GameAccessibilityService.instance
         if (service == null) {
-            Events.record(context, "${p.title}: accessibility service unavailable at scheduled time")
+            Events.record(context, "${p.title}: scheduled job queued; accessibility controller not active")
         } else service.enqueue(p)
     }
 }
+
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED ||
-            intent.action == Intent.ACTION_TIME_CHANGED ||
-            intent.action == Intent.ACTION_TIMEZONE_CHANGED ||
-            intent.action == AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED) {
-            Scheduler.all(context)
+        when (intent.action) {
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED,
+            AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> {
+                Scheduler.all(context)
+                Events.record(context, "Alarms restored after system event: ${intent.action}")
+            }
         }
     }
 }
