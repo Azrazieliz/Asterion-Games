@@ -52,6 +52,7 @@ class Brain(private val context: Context) {
         val observedTime: Long
     )
     private val ledger = GoalLedger(context)
+    private val journal = EpisodeJournal(context)
     private val graph = ExperienceGraph(context)
     private val prefs = context.getSharedPreferences("mastery_policy_v2", 0)
     private var pending: PendingProof? = null
@@ -106,8 +107,12 @@ class Brain(private val context: Context) {
             update(proof.actionKey, positive = true, verified = true)
             graph.verified(game.id, proof.goal, lastProofScene ?: "", proof.actionKey)
             lastConfirmedAt = frame.time
+            journal.record(game.id, proof.goal.id, "VERIFIED", frame, proof.label,
+                "Two post-action observations match game-result evidence")
             Events.record(context, "${game.title}: VERIFIED ${proof.goal.title}")
         } else {
+            journal.record(game.id, proof.goal.id, "UNCONFIRMED", frame, proof.label,
+                "Result cue not repeated; no completion credited")
             Events.record(context, "${game.title}: evidence disappeared before confirmation")
         }
         pending = null
@@ -192,6 +197,8 @@ class Brain(private val context: Context) {
         val sceneCount = (totalByScene[choice.scene] ?: 0) + 1
         totalByScene[choice.scene] = sceneCount
         ledger.attempt(game.id, choice.goal)
+        journal.record(game.id, choice.goal.id, "DISPATCHED", null, choice.label,
+            "Gesture accepted by Android, result not yet observed")
         Events.record(context, "${game.title}: ${choice.goal.id}, ${choice.label}; scene actions=$sceneCount")
     }
 
@@ -205,6 +212,9 @@ class Brain(private val context: Context) {
         // Never interpret mere navigation, scene change or tap dispatch as a verified result.
         update(choice.key, positive = changed, verified = false)
         graph.observe(game, choice, before, after, changed)
+        journal.record(game.id, choice.goal.id, "OBSERVED", after, choice.label,
+            if (changed) "Live state changed, not verified completion"
+            else "No meaningful state change")
         val evidence = currentText.firstOrNull { label ->
             label !in previousText && GameKnowledge.explicitSuccess(choice.goal, label)
         }
@@ -217,6 +227,7 @@ class Brain(private val context: Context) {
     }
     fun unresolved(game: GameProfile, reason: String) {
         GoalSettings.get(context, game.id).filter { it.enabled }.forEach { goal ->
+            journal.record(game.id, goal.id, "BLOCKED", null, details = reason)
             val old = ledger.read(game.id, goal)
             if (old.status != GoalStatus.VERIFIED)
                 ledger.block(game.id, goal, reason)
