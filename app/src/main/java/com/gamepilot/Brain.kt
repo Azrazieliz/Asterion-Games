@@ -52,14 +52,17 @@ class Brain(private val context: Context) {
         val observedTime: Long
     )
     private val ledger = GoalLedger(context)
+    private val graph = ExperienceGraph(context)
     private val prefs = context.getSharedPreferences("mastery_policy_v2", 0)
     private var pending: PendingProof? = null
+    private var lastProofScene: String? = null
     private val currentAttempts = mutableMapOf<String, Int>()
     private val totalByScene = mutableMapOf<String, Int>()
     private var lastConfirmedAt = 0L
 
     fun resetSession() {
         pending = null
+        lastProofScene = null
         currentAttempts.clear()
         totalByScene.clear()
     }
@@ -101,12 +104,14 @@ class Brain(private val context: Context) {
         if (stillPresent && frame.time - proof.observedTime < 10_000L) {
             ledger.verify(game.id, proof.goal, proof.label)
             update(proof.actionKey, positive = true, verified = true)
+            graph.verified(game.id, proof.goal, lastProofScene ?: "", proof.actionKey)
             lastConfirmedAt = frame.time
             Events.record(context, "${game.title}: VERIFIED ${proof.goal.title}")
         } else {
             Events.record(context, "${game.title}: evidence disappeared before confirmation")
         }
         pending = null
+        lastProofScene = null
         return false
     }
 
@@ -155,6 +160,21 @@ class Brain(private val context: Context) {
                 all.add(Candidate(Choice(GameAction.Tap(x, y), key, scene, goal, label),
                     strength + priority + recordedScore(key) - attempts * 2.0))
             }
+            // Reuse proven scene-specific trajectories, even for icon-only menus.
+            // A cached path must have recorded verified evidence, directly or one step ahead.
+            val remembered = graph.recommend(game, goal, scene)
+            if (remembered != null && !GameKnowledge.dangerous(remembered.label)) {
+                val attempts = currentAttempts[remembered.actionKey] ?: 0
+                if (attempts < 2) {
+                    all.add(Candidate(
+                        Choice(GameAction.Tap(remembered.x, remembered.y),
+                            remembered.actionKey, scene, goal, remembered.label),
+                        priority + 4.0 + remembered.verified * 2.0 +
+                            remembered.changes.toDouble() / remembered.attempts.coerceAtLeast(1) -
+                            attempts * 2.0
+                    ))
+                }
+            }
             // Explicitly configured actions can be learned against the current observed scene.
             game.actions.filterIsInstance<GameAction.Tap>().forEachIndexed { index, tap ->
                 val label = "configured:$index"
@@ -184,11 +204,13 @@ class Brain(private val context: Context) {
         val changed = delta > 14.0 || previousText != currentText
         // Never interpret mere navigation, scene change or tap dispatch as a verified result.
         update(choice.key, positive = changed, verified = false)
+        graph.observe(game, choice, before, after, changed)
         val evidence = currentText.firstOrNull { label ->
             label !in previousText && GameKnowledge.explicitSuccess(choice.goal, label)
         }
         if (evidence != null) {
             pending = PendingProof(game.id, choice.goal, choice.key, evidence, after.time)
+            lastProofScene = choice.scene
             Events.record(context, "${game.title}: candidate goal evidence ${evidence.take(80)}")
         }
         return Feedback(changed, evidence != null)
