@@ -57,6 +57,7 @@ class LiveVisionService : Service() {
     private var lastTime = 0L
     private var closing = false
     private var densityDpi = 1
+    private var reusablePixels: ByteBuffer? = null
     private val maxOcrWidth = 1080
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -128,8 +129,11 @@ class LiveVisionService : Service() {
             }
             val rowStride = plane.rowStride
             val paddedWidth = rowStride / plane.pixelStride
-            val bytes = ByteBuffer.allocate(rowStride * image.height)
-            bytes.put(plane.buffer)
+            val needed = rowStride * image.height
+            val bytes = reusablePixels?.takeIf { it.capacity() == needed }
+                ?: ByteBuffer.allocate(needed).also { reusablePixels = it }
+            bytes.clear()
+            bytes.put(plane.buffer.duplicate())
             bytes.rewind()
             val padded = Bitmap.createBitmap(paddedWidth, image.height, Bitmap.Config.ARGB_8888)
             padded.copyPixelsFromBuffer(bytes)
@@ -209,6 +213,7 @@ class LiveVisionService : Service() {
         handler?.removeCallbacksAndMessages(null)
         worker?.quitSafely()
         recognizers.forEach { it.close() }
+        reusablePixels = null
         super.onDestroy()
     }
 }
