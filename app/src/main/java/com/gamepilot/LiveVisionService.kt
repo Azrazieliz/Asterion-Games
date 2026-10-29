@@ -56,6 +56,8 @@ class LiveVisionService : Service() {
     private var display: VirtualDisplay? = null
     private var lastTime = 0L
     private var closing = false
+    private var densityDpi = 1
+    private val maxOcrWidth = 1080
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) { stopSelf(); return START_NOT_STICKY }
@@ -87,11 +89,15 @@ class LiveVisionService : Service() {
             (getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.getRealMetrics(metrics)
             val width = metrics.widthPixels
             val height = metrics.heightPixels
+            densityDpi = metrics.densityDpi
             require(width > 0 && height > 0)
             projection!!.registerCallback(object : MediaProjection.Callback() {
                 override fun onStop() {
                     Events.record(this@LiveVisionService, "Android ended the live perception session")
                     stopSelf()
+                }
+                override fun onCapturedContentResize(width: Int, height: Int) {
+                    handler?.post { resizeCapture(width, height) }
                 }
             }, handler)
             reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 3)
@@ -127,8 +133,15 @@ class LiveVisionService : Service() {
             bytes.rewind()
             val padded = Bitmap.createBitmap(paddedWidth, image.height, Bitmap.Config.ARGB_8888)
             padded.copyPixelsFromBuffer(bytes)
-            val bitmap = Bitmap.createBitmap(padded, 0, 0, image.width, image.height)
+            val cropped = Bitmap.createBitmap(padded, 0, 0, image.width, image.height)
             padded.recycle()
+            val bitmap = if (cropped.width > maxOcrWidth) {
+                val scale = maxOcrWidth.toFloat() / cropped.width
+                val result = Bitmap.createScaledBitmap(cropped, maxOcrWidth,
+                    (cropped.height * scale).toInt().coerceAtLeast(1), true)
+                cropped.recycle()
+                result
+            } else cropped
             val tiles = sampleTiles(bitmap)
             val input = InputImage.fromBitmap(bitmap, 0)
             val jobs = recognizers.map { it.process(input) }
@@ -151,6 +164,27 @@ class LiveVisionService : Service() {
             Events.record(this, "Frame processing failed: ${error.javaClass.simpleName}")
         } finally { image.close() }
     }
+    /** Resize the existing virtual display: no second createVirtualDisplay call or reused consent token. */
+    private fun resizeCapture(width: Int, height: Int) {
+        if (closing || width <= 0 || height <= 0) return
+        val previous = reader ?: return
+        if (previous.width == width && previous.height == height) return
+        try {
+            // Prevent outstanding OCR callbacks from accessing a released reader.
+            previous.setOnImageAvailableListener(null, null)
+            val next = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 3)
+            next.setOnImageAvailableListener({ source -> processLatest(source) }, handler)
+            display?.resize(width, height, densityDpi)
+            display?.setSurface(next.surface)
+            reader = next
+            previous.close()
+            Events.record(this, "Capture resized to ${width}x${height}")
+        } catch (error: Exception) {
+            Events.record(this, "Live capture resize failed: ${error.javaClass.simpleName}")
+            stopSelf()
+        }
+    }
+
     private fun sampleTiles(bitmap: Bitmap): IntArray {
         val cols = 12
         val rows = 8
