@@ -44,7 +44,7 @@ object RoutePlanner {
             .mapNotNull { edge ->
                 val hops = if (edge.verified > 0) 0 else
                     distances[edge.destination]?.plus(1) ?: return@mapNotNull null
-                if (hops >= maxDepth) return@mapNotNull null
+                if (hops >= maxDepth || hops > (distances[scene] ?: Int.MAX_VALUE)) return@mapNotNull null
                 val reliability = edge.changes.toDouble() / edge.attempts
                 val success = edge.verified.toDouble() / edge.attempts
                 val score = success * 20.0 + reliability * 3.0 - hops * 1.8 -
