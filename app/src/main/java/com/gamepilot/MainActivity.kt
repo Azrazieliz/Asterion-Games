@@ -58,6 +58,8 @@ class MainActivity : Activity() {
             render()
         }
         text("Status: ${Events.current}", 14)
+        text("Pending scheduled jobs: ${ScheduledJobs.pendingCount(this)}", 13)
+        text("Today's task completion is counted only after verified game evidence, never from a timer.", 13)
         button("Show activity / learning log") {
             AlertDialog.Builder(this).setTitle("Automation history")
                 .setMessage(Events.history(this).take(5000).ifBlank { "No activity yet." })
@@ -92,6 +94,21 @@ class MainActivity : Activity() {
                 }
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             row.addView(actions)
+            val taskControls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            taskControls.addView(Button(this).apply {
+                text = "Tasks / targets"
+                setOnClickListener { editGoals(p) }
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            taskControls.addView(Button(this).apply {
+                text = "Results"
+                setOnClickListener {
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle(p.title + " — today's verified results")
+                        .setMessage(GoalLedger(this@MainActivity).report(p.id))
+                        .setPositiveButton("Close", null).show()
+                }
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            row.addView(taskControls)
             row.setPadding(0, 15, 0, 15)
             container.addView(row)
         }
@@ -166,6 +183,64 @@ class MainActivity : Activity() {
                     render()
                 } catch (error: Exception) {
                     Toast.makeText(this, error.message ?: "Invalid settings", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun editGoals(p: GameProfile) {
+        val goals = GoalSettings.get(this, p.id)
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(18, 12, 18, 12)
+        }
+        val controls = goals.map { goal ->
+            val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            val check = CheckBox(this).apply {
+                text = goal.title
+                isChecked = goal.enabled
+                row.addView(this)
+            }
+            val count = EditText(this).apply {
+                inputType = android.text.InputType.TYPE_CLASS_NUMBER
+                hint = "Verified runs required"
+                setText(goal.targetRuns.toString())
+                row.addView(this)
+            }
+            val keywords = EditText(this).apply {
+                hint = "Additional game UI words (comma separated)"
+                setText(goal.customCues.joinToString(", "))
+                row.addView(this)
+            }
+            layout.addView(row)
+            Triple(check, count, keywords)
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Objectives: ${p.title}")
+            .setMessage("Every enabled goal must have verified in-game evidence. Add UI cues discovered from actual gameplay; unverified goals remain incomplete.")
+            .setView(ScrollView(this).apply { addView(layout) })
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Save", null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                try {
+                    val updated = goals.mapIndexed { i, goal ->
+                        val (check, count, keywords) = controls[i]
+                        val target = count.text.toString().toInt()
+                        require(target in 1..999) { "Runs must be from 1 to 999" }
+                        goal.copy(
+                            enabled = check.isChecked,
+                            targetRuns = target,
+                            customCues = keywords.text.toString().split(",")
+                                .map { it.trim() }.filter { it.isNotBlank() }.take(30)
+                        )
+                    }
+                    GoalSettings.save(this, p.id, updated)
+                    dialog.dismiss()
+                    render()
+                } catch (error: Exception) {
+                    Toast.makeText(this, error.message ?: "Invalid goals", Toast.LENGTH_LONG).show()
                 }
             }
         }
