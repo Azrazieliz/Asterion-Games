@@ -25,12 +25,16 @@ class GameAccessibilityService : AccessibilityService() {
     private var lastBefore: LiveFrame? = null
     private var lastFrameTime = 0L
     private var isDispatching = false
+    private var missingFramesSince = 0L
+    private var noCandidatesSince = 0L
+    private var wrongAppChecks = 0
     @Volatile private var lastWindowPackage: String? = null
 
     override fun onServiceConnected() {
         instance = this
         brain = Brain(this)
         Events.record(this, "Accessibility controller connected")
+        ScheduledJobs.recover(this).forEach(::enqueue)
     }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
@@ -55,6 +59,7 @@ class GameAccessibilityService : AccessibilityService() {
         lastAction = null
         lastBefore = null
         isDispatching = false
+        if (::brain.isInitialized) brain.resetSession()
         Events.record(this, "Stopped")
     }
     private fun startNext() {
@@ -82,6 +87,11 @@ class GameAccessibilityService : AccessibilityService() {
         lastBefore = null
         lastFrameTime = 0
         isDispatching = false
+        wrongAppChecks = 0
+        missingFramesSince = 0L
+        noCandidatesSince = 0L
+        brain.resetSession()
+        ScheduledJobs.started(this, p)
         expiry = System.currentTimeMillis() + p.maxMinutes * 60_000L
         generation++
         val id = generation
@@ -99,7 +109,10 @@ class GameAccessibilityService : AccessibilityService() {
     }
     private fun finish(id: Int) {
         if (id != generation) return
-        Events.record(this, "Finished ${active?.title ?: "game"}")
+        active?.let { game ->
+            Events.record(this, "Session ended ${game.title}. VERIFIED goals only: ${brain.summary(game)}")
+            ScheduledJobs.finished(this, game)
+        }
         active = null
         lastAction = null
         lastBefore = null
@@ -113,18 +126,36 @@ class GameAccessibilityService : AccessibilityService() {
     }
     private fun adapt(p: GameProfile, id: Int) {
         if (id != generation) return
-        if (System.currentTimeMillis() >= expiry || actionCount >= 500) { finish(id); return }
-        if (isDispatching) { main.postDelayed({ adapt(p, id) }, 400); return }
-        if (!currentPackageMatches(p)) {
-            Events.record(this, "${p.title}: wrong foreground app; stopping")
-            finish(id); return
-        }
-        val frame = VisionBus.latest
-        if (frame == null || System.currentTimeMillis() - frame.time > 3_000) {
-            Events.record(this, "${p.title}: no live frames; paused (projection authorization required)")
-            main.postDelayed({ adapt(p, id) }, 3_000)
+        if (System.currentTimeMillis() >= expiry || actionCount >= 500) {
+            brain.unresolved(p, "Session limit; no verified completion")
+            finish(id)
             return
         }
+        if (isDispatching) { main.postDelayed({ adapt(p, id) }, 400); return }
+        if (!currentPackageMatches(p)) {
+            wrongAppChecks++
+            if (wrongAppChecks <= 3) {
+                main.postDelayed({ adapt(p, id) }, 1500)
+                return
+            }
+            Events.record(this, "${p.title}: foreground app mismatch; no input dispatched")
+            brain.unresolved(p, "Wrong foreground app")
+            finish(id); return
+        }
+        wrongAppChecks = 0
+        val frame = VisionBus.latest
+        if (frame == null || System.currentTimeMillis() - frame.time > 3_000) {
+            if (missingFramesSince == 0L) {
+                missingFramesSince = System.currentTimeMillis()
+                Events.record(this, "${p.title}: no live frames; cannot navigate without perception")
+            }
+            if (System.currentTimeMillis() - missingFramesSince >= 30_000) {
+                brain.unresolved(p, "Live perception unavailable for 30 seconds")
+                finish(id)
+            } else main.postDelayed({ adapt(p, id) }, 1500)
+            return
+        }
+        missingFramesSince = 0L
         if (frame.time == lastFrameTime) { main.postDelayed({ adapt(p, id) }, 500); return }
         lastFrameTime = frame.time
         val previous = lastAction
@@ -132,11 +163,21 @@ class GameAccessibilityService : AccessibilityService() {
         if (previous != null && before != null) brain.learn(p, previous, before, frame)
         lastAction = null
         lastBefore = null
-        val choice = brain.choose(p, frame)
-        if (choice == null) {
-            main.postDelayed({ adapt(p, id) }, 1_000)
+        if (brain.confirmPending(p, frame)) {
+            main.postDelayed({ adapt(p, id) }, 750)
             return
         }
+        if (brain.complete(p)) { finish(id); return }
+        val choice = brain.choose(p, frame)
+        if (choice == null) {
+            if (noCandidatesSince == 0L) noCandidatesSince = System.currentTimeMillis()
+            if (System.currentTimeMillis() - noCandidatesSince >= 30_000) {
+                brain.unresolved(p, "No relevant or safe action found in 30 seconds")
+                finish(id)
+            } else main.postDelayed({ adapt(p, id) }, 1_000)
+            return
+        }
+        noCandidatesSince = 0L
         lastAction = choice
         lastBefore = frame
         actionCount++
@@ -144,13 +185,24 @@ class GameAccessibilityService : AccessibilityService() {
         dispatch(choice.action) { worked ->
             isDispatching = false
             if (id != generation) return@dispatch
-            if (!worked) { Events.record(this, "${p.title}: gesture dispatch failed"); finish(id) }
-            else main.postDelayed({ adapt(p, id) }, 1_200)
+            if (!worked) {
+                Events.record(this, "${p.title}: gesture dispatch failed")
+                brain.unresolved(p, "Gesture dispatch failed")
+                finish(id)
+            } else {
+                brain.actionSent(p, choice)
+                main.postDelayed({ adapt(p, id) }, 1_200)
+            }
         }
     }
     private fun scripted(p: GameProfile, index: Int, id: Int) {
         if (id != generation) return
-        if (System.currentTimeMillis() >= expiry || index >= p.actions.size) { finish(id); return }
+        if (System.currentTimeMillis() >= expiry || index >= p.actions.size) {
+            // Script execution is not evidence of completion.
+            Events.record(this, "${p.title}: scripted steps ended without goal verification")
+            finish(id)
+            return
+        }
         val step = p.actions[index]
         if (step is GameAction.Wait) {
             main.postDelayed({ scripted(p, index + 1, id) }, step.milliseconds.coerceIn(0, 600000))
