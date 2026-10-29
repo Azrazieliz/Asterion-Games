@@ -25,13 +25,19 @@ class GameAccessibilityService : AccessibilityService() {
     private var lastBefore: LiveFrame? = null
     private var lastFrameTime = 0L
     private var isDispatching = false
+    @Volatile private var lastWindowPackage: String? = null
 
     override fun onServiceConnected() {
         instance = this
         brain = Brain(this)
         Events.record(this, "Accessibility controller connected")
     }
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            val pkg = event.packageName?.toString()
+            if (!pkg.isNullOrBlank()) lastWindowPackage = pkg
+        }
+    }
     override fun onInterrupt() { stopAll() }
     override fun onDestroy() { stopAll(); instance = null; super.onDestroy() }
 
@@ -101,7 +107,8 @@ class GameAccessibilityService : AccessibilityService() {
         main.post { startNext() }
     }
     private fun currentPackageMatches(p: GameProfile): Boolean {
-        val node = rootInActiveWindow ?: return true // GPU games may not expose a normal tree
+        val node = rootInActiveWindow
+        if (node == null) return lastWindowPackage == p.packageName
         return try { node.packageName?.toString() == p.packageName } finally { node.recycle() }
     }
     private fun adapt(p: GameProfile, id: Int) {

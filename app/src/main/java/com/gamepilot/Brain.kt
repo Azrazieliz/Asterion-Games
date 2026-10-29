@@ -34,7 +34,9 @@ class Brain(private val context: Context) {
         "claim", "collect", "reward", "daily", "mission", "quest", "dispatch",
         "start", "repeat", "auto", "continue", "complete", "receive", "skip",
         "confirm", "accept", "next", "领取", "领取奖励", "日常", "報酬",
-        "受取", "一括", "開始", "確認", "次へ", "完了", "受け取る"
+        "受取", "一括", "開始", "確認", "次へ", "完了", "受け取る",
+        "出撃", "周回", "戦闘", "挑戦", "再戦", "自動", "スキップ", "任務", "デイリー",
+        "领取", "收取", "奖励", "自动", "开始", "完成", "挂机"
     )
     private val blocked = listOf(
         "purchase", "shop", "buy", "top up", "recharge", "checkout",
