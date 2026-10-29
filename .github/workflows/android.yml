@@ -23,11 +23,26 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
+      # Debug signing continuity for later CI APKs. GitHub cache is best-effort;
+      # a secure production signing secret is required for a guaranteed release identity.
+      - name: Restore persistent CI debug signer
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: asterion-pilot-ci-debug-signing-v1
       - name: Assemble debug APK
         run: gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
+      - name: Record APK signing certificate
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs \
+            app/build/outputs/apk/debug/app-debug.apk \
+            > app/build/outputs/apk/debug/SIGNING_CERTIFICATE.txt
+          grep 'Signer #1 certificate SHA-256 digest' app/build/outputs/apk/debug/SIGNING_CERTIFICATE.txt
       - name: Upload installable debug APK
         uses: actions/upload-artifact@v4
         with:
           name: AsterionPilot-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/SIGNING_CERTIFICATE.txt
           if-no-files-found: error
