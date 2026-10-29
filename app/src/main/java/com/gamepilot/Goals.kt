@@ -96,6 +96,14 @@ class GoalLedger(private val context: Context) {
             .put("modifiedAt", System.currentTimeMillis())
         prefs.edit().putString(key(gameId, goal), o.toString()).apply()
     }
+    /** A blocked attempt may be retried on the same day; verified runs remain durable. */
+    fun reopenForNextSession(gameId: Int) {
+        GoalSettings.get(context, gameId).filter { it.enabled }.forEach { goal ->
+            val old = read(gameId, goal)
+            if (old.status == GoalStatus.BLOCKED)
+                write(gameId, goal, old.copy(status = GoalStatus.PENDING, reason = "Ready to retry"))
+        }
+    }
     fun attempt(gameId: Int, goal: GameGoal) {
         val old = read(gameId, goal)
         write(gameId, goal, old.copy(status = GoalStatus.RUNNING, attempts = old.attempts + 1))

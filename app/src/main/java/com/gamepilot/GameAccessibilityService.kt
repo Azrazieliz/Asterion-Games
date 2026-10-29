@@ -105,6 +105,7 @@ class GameAccessibilityService : AccessibilityService() {
         missingFramesSince = 0L
         noCandidatesSince = 0L
         brain.resetSession()
+        GoalLedger(this).reopenForNextSession(p.id)
         expiry = System.currentTimeMillis() + p.maxMinutes * 60_000L
         generation++
         val id = generation
