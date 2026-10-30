@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 87320decd9439a7acf70159de91b1c85f9e43427
+          ref: 9e6127bc05a2c5316fe8a6221bd2acd63b9f5d57
       - uses: actions/checkout@v4
         with:
           repository: Azrazieliz/Game-Central-Database
