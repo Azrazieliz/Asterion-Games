@@ -194,7 +194,9 @@ object ShoujoKaisenResources {
         return listOf(
             "dispatch level", "quick dispatch", "dispatch missions",
             "quick refresh", "world extractor", "provisions transport",
-            "dragon store", "starwish store", "武将派遣", "派遣任務",
+            "dragon store", "starwish store", "dragon mine wars",
+            "draconic mirage", "cross-server occupation", "my dragon mine",
+            "garrisoned troops", "collection info", "武将派遣", "派遣任務",
             "おまかせ派遣", "資源輸送", "抽出", "鉱山", "ショップ"
         ).any { value.contains(it) }
     }

@@ -128,6 +128,11 @@ object GamePlaybooks {
                 "Galaxy Clash", "Event Quest", "Rewards", "Raffle Tickets"),
             r("Chaos Clash", GoalType.DAILIES,
                 "Chaos Clash", "Challenge Chance", "Winner gets"),
+            // Timed global cross-server event, not an ordinary daily reward.
+            r("Dragon Mine Wars / Draconic Mirage (time-limited)",
+                GoalType.DAILIES, "Dragon Mine Wars", "Draconic Mirage",
+                "My Dragon Mine(s)", "Battle Stage I", "Cross-server Occupation",
+                "Collection Info", "Garrisoned Troops", "Rankings"),
             r("Guild Provisions Transport", GoalType.DAILIES,
                 "Provisions Transport", "Dispatched Heroes", "Transport"),
             r("The World Extractor", GoalType.REWARDS,

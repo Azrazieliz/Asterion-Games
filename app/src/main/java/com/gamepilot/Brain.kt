@@ -132,6 +132,13 @@ class Brain(private val context: Context) {
                 return null
             }
         }
+        // Dragon Mine Wars is a competitive five-garrison mode. Do not blindly
+        // select Occupy, Challenge, Plunder or a formation from OCR cues.
+        if (DragonMineWars.requiresPlanner(game.id, frame.textValues())) {
+            Events.record(context, "${game.title}: Dragon Mine Wars recognized; " +
+                "need observed opponent, occupied slots, team and resource values")
+            return null
+        }
         val resourceSensitiveScreen =
             ShoujoKaisenResources.needsStructuredResourceDecision(game.id, frame.textValues())
         if (resourceSensitiveScreen)
