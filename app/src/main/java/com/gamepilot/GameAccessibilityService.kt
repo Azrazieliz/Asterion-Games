@@ -38,6 +38,7 @@ class GameAccessibilityService : AccessibilityService() {
     private var foregroundConfirmed = false
     private var wakeLock: PowerManager.WakeLock? = null
     private var lastRecoveryTime = 0L
+    private val exploredScenes = mutableSetOf<String>()
     @Volatile private var lastWindowPackage: String? = null
 
     override fun onServiceConnected() {
@@ -144,6 +145,7 @@ class GameAccessibilityService : AccessibilityService() {
             ledger.read(p.id,goal).verifiedRuns < goal.targetRuns
         }
         actionCount = 0
+        exploredScenes.clear()
         lastAction = null
         lastBefore = null
         lastFrameTime = 0
@@ -274,6 +276,38 @@ class GameAccessibilityService : AccessibilityService() {
         val choice = brain.choose(p, frame)
         if (choice == null) {
             if (noCandidatesSince == 0L) noCandidatesSince = System.currentTimeMillis()
+            val now = System.currentTimeMillis()
+            val scene = frame.sceneKey()
+            val canInspect = p.adaptive && p.id != 22 && p.id != 26 &&
+                now - noCandidatesSince > 25_000L &&
+                now - launchStartedAt > 35_000L &&
+                !GameKnowledge.screenUnsafe(frame) &&
+                !ShoujoKaisenResources.needsStructuredResourceDecision(p.id,frame.textValues())
+            if (canInspect) {
+                val attempted = exploredScenes.filter { it.startsWith("$scene:") }
+                    .map { it.substringAfterLast(':') }.toSet()
+                val hints = frame.texts.filter { !it.bounds.isEmpty && frame.width > 0 && frame.height > 0 }
+                    .map { seen ->
+                        SafeExploration.Hint(seen.label,
+                            seen.bounds.centerX().toFloat() / frame.width,
+                            seen.bounds.centerY().toFloat() / frame.height)
+                    }
+                val inspect = SafeExploration.select(hints, attempted)
+                if (inspect != null) {
+                    exploredScenes.add("$scene:${GameKnowledge.normalize(inspect.label)}")
+                    isDispatching = true
+                    dispatch(GameAction.Tap(inspect.x,inspect.y)) { worked ->
+                        isDispatching = false
+                        if (id != generation) return@dispatch
+                        EpisodeJournal(this).record(p.id, "exploration",
+                            if(worked) "READ_ONLY_INSPECTION" else "INSPECTION_FAILED",
+                            frame, inspect.label,
+                            "Read-only UI exploration only; no completion assumed")
+                        main.postDelayed({ adapt(p,id) }, 1200)
+                    }
+                    return
+                }
+            }
             val startupGrace = System.currentTimeMillis() - launchStartedAt < 120_000L
             if (!startupGrace && System.currentTimeMillis() - noCandidatesSince >= 45_000L) {
                 brain.unresolved(p, "No relevant or safe action found after startup grace")
