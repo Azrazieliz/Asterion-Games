@@ -43,6 +43,23 @@ Device: Samsung Android 17, ADB `R3GYC0LSC7K`, connected via authorized remote w
 - Current Codex certificate SHA-256 `b5390147b2816ef765f8108682426071d26f804d25274aa1d79a0c8cb5f1cdc6`. New Codex bridge certificate SHA-256 `b7a52cd78eba70511098848c6fd1c62c3559314a7ce3576511abc81f66d03059`. It **differs from the installed Codex certificate**; in-place APK update is not possible. Existing Codex untouched.
 - The existing Codex private files are visible through `adb run-as`. **No uninstall, reset, or data clearing performed.**
 
+## Validated non-destructive Codex data backup (2026-10-30)
+
+With the original debuggable Codex installation intact, ADB `run-as net.gamecodex.app` was used to create a local archive on the user's authorized computer:
+
+- `D:\\AsterionPilotAnalysis\\Codex-installed-v1.0.0-ADB-backup.tar`
+- **118,795,264 bytes**; **1,232 archive entries**; contains `files/codex/index.html`, `app_webview`, `shared_prefs` and `databases`.
+- Archive SHA-256: `0fe3e8ed43aa6404b1dbc8849a92458ef6ccc8c84aa6fbaa487016f6a9172442`
+- The archive is on the authorized PC, **not committed to GitHub** and **not uploaded to conversation storage**.
+- Contents inspected for presence and integrity of archive members. **Full round-trip restore has not been tested.**
+- No uninstall, app-data clear or changes to the Codex installation occurred. Re-signing remains blocked by incompatible signer; an explicit replacement/migration decision is still required before destructive steps.
+
+## On-device Pilot installation
+
+- Pilot `com.gamepilot` was installed with `adb install -r` — **Success**, Android `versionCode=6`, `versionName=0.3.3`.
+- The app's `MainActivity` launched, exposing native Android controls. A notification permission dialog appeared, and the interface responded to navigation; no game runs or automation services were enabled.
+- UI observation alone does **not** verify running tasks, real Codex provider synchronization, or gameplay.
+
 ## Recent implementation commits
 
 - Pilot `main`: `f007a1c19b72` creates frozen decisions + live progress ledger; `d87642885de9` adds second hash integrity gate.
