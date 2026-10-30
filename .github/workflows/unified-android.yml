@@ -79,7 +79,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .ci-signing/debug.keystore
-          key: asterion-pilot-unified-debug-signing-v1
+          key: asterion-pilot-ci-debug-signing-v2
       - name: Ensure signer exists
         run: |
           mkdir -p .ci-signing
