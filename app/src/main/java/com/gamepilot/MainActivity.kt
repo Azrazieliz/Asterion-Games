@@ -123,7 +123,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(19), dp(16), dp(19), dp(10))
             addView(label("ASTERION", 24f, ink, true))
-            addView(label("Game accounts • learning • scheduling", 12f, muted))
+            addView(label(SessionStatus.description(this@MainActivity).lineSequence().firstOrNull() ?: "Game automation", 12f, muted))
             addView(verticalSpace(12))
             val state = AutomationControl.mode(this@MainActivity)
             val powerRow = LinearLayout(this@MainActivity).apply {
@@ -169,42 +169,25 @@ class MainActivity : Activity() {
                 AutomationControl.Mode.PAUSED -> "PAUSED • sessions held, schedules preserved"
                 AutomationControl.Mode.OFF -> "OFF • sessions and alarms cancelled"
             }, 12f, if (state == AutomationControl.Mode.RUNNING) accent else muted))        })
-        // Two rows remain readable in Android split-screen / narrow widths.
+        // Bottom navigation leaves the main content in full view.
         val nav = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(2), dp(12), dp(9))
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(8), dp(6), dp(8), dp(8))
+            background = bg(panel, 0)
         }
         listOf(
-            listOf("Accounts", "Automation"),
-            listOf("News", "Codex")
-        ).forEachIndexed { rowIndex, titles ->
-            val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            titles.forEachIndexed { columnIndex, text ->
-                val index = rowIndex * 2 + columnIndex
-                val selected = when(index) {
-                    0 -> tab == Tab.GAMES
-                    1 -> tab == Tab.AUTOMATION
-                    2 -> tab == Tab.NEWS
-                    else -> false
-                }
-                line.addView(action(text, selected) {
-                    if (index == 3) openCodex()
-                    else {
-                        tab = when(index) {
-                            0 -> Tab.GAMES
-                            1 -> Tab.AUTOMATION
-                            else -> Tab.NEWS
-                        }
-                        selectedGameId = null
-                        render()
-                    }
-                }, LinearLayout.LayoutParams(0, dp(44), 1f).apply {
-                    marginStart = dp(3); marginEnd = dp(3)
-                })
-            }
-            nav.addView(line, LinearLayout.LayoutParams(-1, dp(49)))
+            Tab.GAMES to "Games",
+            Tab.AUTOMATION to "Activity",
+            Tab.NEWS to "News"
+        ).forEach { (target, name) ->
+            nav.addView(action(name, tab == target) {
+                tab = target
+                selectedGameId = null
+                render()
+            }, LinearLayout.LayoutParams(0, dp(48), 1f).apply {
+                marginStart=dp(3); marginEnd=dp(3)
+            })
         }
-        root.addView(nav)
         val scroll = ScrollView(this).apply {
             isFillViewport = true
             isVerticalScrollBarEnabled = false
@@ -215,6 +198,7 @@ class MainActivity : Activity() {
         }
         scroll.addView(area)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        root.addView(nav)
         setContentView(root)
         when (tab) {
             Tab.GAMES -> showGames()
@@ -228,8 +212,8 @@ class MainActivity : Activity() {
         val profiles = Profiles.all(this)
         val linked = profiles.count { it.packageName.isNotBlank() }
         val active = profiles.count { it.enabled }
-        area.addView(headline("Game accounts", "${profiles.size} games • $linked installed • $active scheduled"))
-        area.addView(label("Each game has its own account, activities, knowledge and news.",
+        area.addView(headline("Your games", "$linked installed • $active scheduled"))
+        area.addView(label("Select a game to see its account, routine and characters.",
             12.5f, muted))
         area.addView(verticalSpace(8))
         val find = EditText(this).apply {
@@ -254,20 +238,34 @@ class MainActivity : Activity() {
             }.forEach { game ->
                 val c = card()
                 val account = GameAccounts.current(this, game)
-                c.addView(label(if (game.id == 26) "Shoujo Kaisen • Global"
-                    else if (game.id == 22) "Shoujo Kaisen • JP"
-                    else game.title, 16f, ink, true))
-                c.addView(label(if (account.playerId != null)
-                    "Account linked • " + account.playerId
-                    else if (game.packageName.isBlank()) "Install/link the game first"
-                    else "Account ID not yet verified • recognized from live game UI", 11.5f, muted))
-                val state = when {
-                    game.packageName.isBlank() -> "Not linked"
-                    game.enabled -> "Scheduled  •  %02d:%02d".format(game.hour, game.minute)
-                    else -> "Linked  •  Schedule off"
+                val line = LinearLayout(this).apply {
+                    orientation=LinearLayout.HORIZONTAL
+                    gravity=Gravity.CENTER_VERTICAL
                 }
-                c.addView(label(state, 12.5f, if (game.enabled) accent else muted))
-                c.setOnClickListener { selectedGameId = game.id; render() }
+                val icon = android.widget.ImageView(this).apply {
+                    try { setImageDrawable(packageManager.getApplicationIcon(game.packageName)) }
+                    catch (_:Exception) { setImageResource(android.R.drawable.sym_def_app_icon) }
+                    scaleType=android.widget.ImageView.ScaleType.FIT_CENTER
+                }
+                line.addView(icon,LinearLayout.LayoutParams(dp(48),dp(48)))
+                val info=LinearLayout(this).apply {
+                    orientation=LinearLayout.VERTICAL
+                    setPadding(dp(12),0,0,0)
+                }
+                info.addView(label(if(game.id==26) "Shoujo Kaisen · Global"
+                    else if(game.id==22) "Shoujo Kaisen · JP" else game.title,16f,ink,true))
+                info.addView(label(when {
+                    game.packageName.isBlank() -> "Game not detected"
+                    account.playerId != null -> "Player identified • " + account.playerId
+                    else -> "Game detected • player ID not yet read"
+                },12f,muted))
+                if(game.enabled)
+                    info.addView(label("Routine scheduled at %02d:%02d".format(game.hour,game.minute),
+                        12f,accent))
+                line.addView(info,LinearLayout.LayoutParams(0,-2,1f))
+                line.addView(label("›",24f,muted))
+                c.addView(line)
+                c.setOnClickListener { selectedGameId=game.id; render() }
                 list.addView(c)
             }
         }
@@ -293,97 +291,89 @@ class MainActivity : Activity() {
         }, LinearLayout.LayoutParams(-1, dp(48)))
     }
     private fun gameDetail(p: GameProfile) {
-        area.addView(action("Back to games") {
-            selectedGameId = null
-            render()
-        }, LinearLayout.LayoutParams(-1, dp(46)))
-        area.addView(verticalSpace(14))
-        area.addView(headline(if (p.id==26) "Shoujo Kaisen • Global"
-            else if (p.id==22) "Shoujo Kaisen • JP" else p.title,
-            (if (p.packageName.isBlank()) "Not linked" else "Installed game linked") +
-                "  •  " + (if (p.enabled) "Scheduled" else "Not scheduled")))
-        area.addView(card().apply {
-            val account = GameAccounts.current(this@MainActivity, p)
-            addView(label("Game account", 16f, ink, true))
-            addView(verticalSpace(6))
-            addView(label("Region: " + account.region, 13f, muted))
-            addView(label(if (account.playerId == null)
-                "Account not verified. The app links it only after reading the same in-game UID twice."
-                else "Verified player ID: " + account.playerId,
-                13f, if (account.playerId == null) muted else accent))
-            if (GameCodexBridge.accountFor(p.id) != null) {
-                addView(verticalSpace(7))
-                addView(label(GameCodexBridge.status(this@MainActivity, p.id), 12.5f, muted))
-                addView(action("Open this account's database") {
+        val owner = GameAccounts.current(this,p)
+        val title = if(p.id == 26) "Shoujo Kaisen · Global"
+            else if(p.id == 22) "Shoujo Kaisen · JP" else p.title
+        area.addView(action("‹ All games") { selectedGameId=null; render() })
+        area.addView(verticalSpace(12))
+        area.addView(headline(title,
+            if(p.packageName.isBlank()) "Not installed"
+            else "Installed game • "+(if(p.enabled) "routine scheduled" else "routine not scheduled")))
+        val buttons=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
+        buttons.addView(action("Open game",true){
+            val launch=packageManager.getLaunchIntentForPackage(p.packageName)
+            if(launch!=null) startActivity(launch)
+            else Toast.makeText(this,"Game not found on this device",Toast.LENGTH_SHORT).show()
+        },LinearLayout.LayoutParams(0,dp(52),1f).apply{marginEnd=dp(5)})
+        buttons.addView(action("Run routine"){
+            when {
+                !AutomationControl.running(this) -> dialog("Automation paused","Resume automation first.")
+                p.packageName.isBlank() -> dialog("Game not installed","Asterion could not locate this game.")
+                GameAccessibilityService.instance==null ->
+                    dialog("Enable game control","Open Activity and enable Android accessibility control.")
+                else -> GameAccessibilityService.instance?.enqueue(p)
+            }
+        },LinearLayout.LayoutParams(0,dp(52),1f))
+        area.addView(buttons)
+        area.addView(verticalSpace(12))
+        area.addView(card().apply{
+            addView(label("Your account",17f,ink,true))
+            addView(verticalSpace(7))
+            addView(label(if(owner.playerId!=null) "Player ID: "+owner.playerId
+                else if(p.packageName.isNotBlank())
+                    "Game detected. Asterion will identify the player ID when its profile appears in the live game."
+                else "Install the game before connecting an account.",13f,muted))
+            if(GameCodexBridge.accountFor(p.id)!=null){
+                val synced=GameCodexBridge.refresh(this@MainActivity,p.id)
+                addView(verticalSpace(6))
+                addView(label("Characters in this account's Codex: "+synced.ownedCount+
+                    if(synced.state==GameCodexBridge.SyncState.LINKED) " synced" else " not imported",
+                    13f,muted))
+                addView(verticalSpace(10))
+                addView(action("Characters, equipment & teams",true){
                     openCodex(GameCodexBridge.accountFor(p.id))
-                })
+                },LinearLayout.LayoutParams(-1,dp(49)))
             }
         })
-        val summary = card().apply {
-            addView(label("Today's objectives", 16f, ink, true))
+        area.addView(card().apply{
+            addView(label("Today's routine",17f,ink,true))
             addView(verticalSpace(8))
-            addView(label(GoalLedger(this@MainActivity).report(p.id), 13f, muted))
-        }
-        area.addView(summary)
-        area.addView(action("Run now", true) {
-            val ctl = GameAccessibilityService.instance
-            when {
-                !AutomationControl.running(this) -> Toast.makeText(this,
-                    "Automation is paused or off. Use Resume or Turn on first.", Toast.LENGTH_LONG).show()
-                p.packageName.isBlank() -> Toast.makeText(this, "Link the installed game first", Toast.LENGTH_LONG).show()
-                ctl == null -> Toast.makeText(this, "Enable game control in Automation first", Toast.LENGTH_LONG).show()
-                else -> ctl.enqueue(p)
+            val goals=GoalSettings.get(this@MainActivity,p.id).filter{it.enabled}
+            if(goals.isEmpty()) addView(label("No routine configured",13f,muted))
+            goals.forEach{goal->
+                val state=GoalLedger(this@MainActivity).read(p.id,goal)
+                addView(label(when(state.status){
+                    GoalStatus.VERIFIED -> "✓  "+goal.title
+                    GoalStatus.BLOCKED -> "!  "+goal.title+" • needs attention"
+                    else -> "○  "+goal.title
+                },13f,if(state.status==GoalStatus.VERIFIED)accent else muted))
             }
-        }, LinearLayout.LayoutParams(-1, dp(50)).also { })
-        area.addView(verticalSpace(9))
-        area.addView(action("Schedule and game settings") { openEditor(p.id, false) },
-            LinearLayout.LayoutParams(-1, dp(49)))
-        area.addView(verticalSpace(9))
-        area.addView(action("Daily goals") { openEditor(p.id, true) },
-            LinearLayout.LayoutParams(-1, dp(49)))
-        area.addView(verticalSpace(9))
-        area.addView(card().apply {
-            addView(label("Recovery diagnostics",16f,ink,true))
-            addView(label(FailureRecoveryLab.description(this@MainActivity,p.id),13f,muted))
-            if(FailureRecoveryLab.held(this@MainActivity,p.id)) {
+            addView(verticalSpace(10))
+            addView(action("Routine schedule & objectives"){openEditor(p.id,false)})
+        })
+        area.addView(card().apply{
+            addView(label("Learning & results",17f,ink,true))
+            addView(verticalSpace(7))
+            addView(label(FailureRecoveryLab.description(this@MainActivity,p.id),12f,muted))
+            addView(verticalSpace(6))
+            addView(action("Recent gameplay"){dialog("Gameplay history",
+                EpisodeJournal(this@MainActivity).recent(p.id))})
+            addView(verticalSpace(6))
+            addView(action("Strategy evidence"){dialog("Measured performance",
+                StrategyExperiment.report(this@MainActivity,p))})
+            if(FailureRecoveryLab.held(this@MainActivity,p.id)){
                 addView(verticalSpace(8))
-                addView(action("Review complete • allow another attempt") {
+                addView(action("Review and retry"){
                     AlertDialog.Builder(this@MainActivity)
-                        .setTitle("Retry blocked routine?")
-                        .setMessage("The same failure occurred repeatedly. The next run will reassess the live game, not blindly replay a cached gesture.")
+                        .setTitle("Allow another attempt?")
+                        .setMessage("The same action failed repeatedly. Asterion must reassess the live screen before retrying.")
                         .setNegativeButton("Keep blocked",null)
-                        .setPositiveButton("Allow retry") { _, _ ->
-                            FailureRecoveryLab.clear(this@MainActivity,p.id)
-                            render()
+                        .setPositiveButton("Retry"){_,_->
+                            FailureRecoveryLab.clear(this@MainActivity,p.id);render()
                         }.show()
                 })
             }
         })
-        area.addView(action("Measured strategy performance") {
-            dialog("Strategy experiment evidence", StrategyExperiment.report(this, p))
-        }, LinearLayout.LayoutParams(-1, dp(49)))
-        area.addView(verticalSpace(9))
-        area.addView(action("Gameplay history") {
-            dialog("Learned gameplay", EpisodeJournal(this).recent(p.id))
-        }, LinearLayout.LayoutParams(-1, dp(49)))
-        area.addView(verticalSpace(9))
-        area.addView(action("Game playbook") {
-            dialog("Gameplay rules", GamePlaybooks.overview(p.id) +
-                if (ShoujoKaisenResources.account(p.id) != null)
-                    "\n\n" + ShoujoKaisenResources.overview(p.id) else "")
-        }, LinearLayout.LayoutParams(-1, dp(49)))
-        if (GameCodexBridge.accountFor(p.id) != null) {
-            area.addView(verticalSpace(9))
-            area.addView(action("Open character database") {
-                openCodex(GameCodexBridge.accountFor(p.id))
-            }, LinearLayout.LayoutParams(-1, dp(49)))
-            area.addView(verticalSpace(9))
-            area.addView(action("Character strategy summary") {
-                GameCodexBridge.refresh(this, p.id)
-                dialog("Evidence-based meta", MetaEvidence.status(this, p) +
-                    "\n\n" + CodexStrategyAdvisor.overview(this, p.id))
-            }, LinearLayout.LayoutParams(-1, dp(49)))
-        }
     }
     private fun showAutomation() {
         area.addView(headline("Automation", "Live session, permissions and scheduling"))
@@ -468,48 +458,58 @@ class MainActivity : Activity() {
             .apply { if (!account.isNullOrBlank()) putExtra("codex_account", account) })
     }
     private fun showNews() {
-        area.addView(headline("Game news", "Accounts, official announcements and alerts"))
+        area.addView(headline("Important game news",
+            "Automatic updates from public publisher reports"))
         area.addView(card().apply {
-            addView(label("X account connection", 16f, ink, true))
-            addView(verticalSpace(8))
-            addView(label("Not connected. Personalized X follows and notifications require an authorized X OAuth connection. No credentials are read from the X app.",
-                13f, muted))
-            addView(verticalSpace(10))
-            addView(action("Open X account") {
-                startActivity(Intent(Intent.ACTION_VIEW,
-                    android.net.Uri.parse("https://x.com/home")))
+            addView(label("News monitoring",17f,ink,true))
+            addView(verticalSpace(6))
+            val checked=ImportantGameNews.lastRefresh(this@MainActivity)
+            addView(label(if(checked==0L) "No completed check yet"
+                else "Last checked: "+java.text.SimpleDateFormat("dd MMM HH:mm",
+                    java.util.Locale.getDefault()).format(java.util.Date(checked)),
+                12.5f,muted))
+            addView(label("Checks run automatically while the device allows background network access.",
+                12.5f,muted))
+            addView(verticalSpace(9))
+            addView(action("Check for updates",true){
+                ImportantGameNews.refreshNow(this@MainActivity) {
+                    runOnUiThread { if(tab==Tab.NEWS)render() }
+                }
+                Toast.makeText(this@MainActivity,"Checking game news…",Toast.LENGTH_SHORT).show()
             })
         })
-        area.addView(label("Game-specific source discovery", 17f, ink, true))
-        area.addView(verticalSpace(8))
-        Profiles.all(this).filter { it.packageName.isNotBlank() }.forEach { game ->
-            val sources = GameNewsDirectory.candidateSources(game.id)
-            area.addView(card().apply {
-                addView(label(if (game.id == 26) "Shoujo Kaisen Global"
-                    else if (game.id == 22) "Shoujo Kaisen JP"
-                    else game.title, 16f, ink, true))
-                addView(label(GameNewsDirectory.status(game.id), 12f, muted))
-                sources.forEach { source ->
-                    addView(verticalSpace(7))
-                    addView(action("X • @" + source.handle + " (" + source.locale + ")") {
-                        startActivity(Intent(Intent.ACTION_VIEW,
-                            android.net.Uri.parse(source.publicUrl)))
-                    }, LinearLayout.LayoutParams(-1, dp(43)))
-                }
-                if (sources.isEmpty()) {
-                    addView(verticalSpace(9))
-                    addView(action("Search X for this game") {
-                        val query = android.net.Uri.encode(game.title + " official")
-                        startActivity(Intent(Intent.ACTION_VIEW,
-                            android.net.Uri.parse("https://x.com/search?q=$query&f=live")))
-                    })
-                }
+        val profiles=Profiles.all(this).filter{it.packageName.isNotBlank()}
+        val all=profiles.flatMap{p->ImportantGameNews.read(this,p.id)
+            .map{p to it}}.sortedByDescending{it.second.publishedAt}.take(35)
+        if(all.isEmpty()){
+            area.addView(card().apply{
+                addView(label("No reports yet",17f,ink,true))
+                addView(label("Asterion is gathering relevant announcements. Only high-impact updates trigger alerts.",
+                    13f,muted))
             })
+        }else{
+            all.forEach{(game,story)->
+                area.addView(card().apply{
+                    addView(label(if(game.id==22) "Shoujo Kaisen • JP"
+                        else if(game.id==26) "Shoujo Kaisen • Global"
+                        else game.title,12f,accent,true))
+                    addView(verticalSpace(6))
+                    addView(label(story.title,15f,ink,true))
+                    addView(verticalSpace(5))
+                    addView(label(story.publisher+" • "+
+                        java.text.SimpleDateFormat("dd MMM",java.util.Locale.getDefault())
+                            .format(java.util.Date(story.publishedAt))+
+                        (if(story.critical)" • Important" else ""),12f,muted))
+                    addView(verticalSpace(8))
+                    addView(action("Read report"){
+                        startActivity(Intent(Intent.ACTION_VIEW,android.net.Uri.parse(story.link)))
+                    })
+                })
+            }
         }
-        area.addView(label("News recaps and urgent alerts will require source ingestion, categorization, and notification testing; these are not yet active.",
-            12f, muted))
+        area.addView(label("X private-list synchronization is not connected. News here comes from independently indexed public reports, not your private X feed.",
+            12f,muted))
     }
-
     private fun dialog(title: String, message: String) {
         AlertDialog.Builder(this).setTitle(title).setMessage(message)
             .setPositiveButton("Close", null).show()
