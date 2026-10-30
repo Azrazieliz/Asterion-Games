@@ -38,6 +38,8 @@ object AttackOnTimePolicy {
         if (purchasesToday >= DAILY_SHOP_PURCHASES || !offer.available ||
             offer.currency == Currency.GOLD || offer.currency == Currency.REAL_MONEY) return Decision.SKIP
         if (offer.currency != Currency.NON_GOLD || offer.price == null) return Decision.EVIDENCE_REQUIRED
+        // A daily purchase must never accidentally buy a Martial Arms duplicate.
+        if (offer.item == Item.MARTIAL_ARMS && offer.alreadyOwned) return Decision.SKIP
         return Decision.BUY_DAILY
     }
 

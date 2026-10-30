@@ -29,6 +29,10 @@ class AttackOnTimePolicyTest {
         assertEquals(AttackOnTimePolicy.Decision.EVIDENCE_REQUIRED,
             p.dailyShop(offer(currency=AttackOnTimePolicy.Currency.UNKNOWN), 0))
     }
+    @Test fun dailyPurchaseNeverCreatesMartialArmsDuplicate() {
+        assertEquals(AttackOnTimePolicy.Decision.SKIP,
+            p.dailyShop(offer(AttackOnTimePolicy.Item.MARTIAL_ARMS, owned=true), 0))
+    }
     @Test fun completeUniqueMartialArmsBeforeDuplicatesAndPreferShards() {
         val state = AttackOnTimePolicy.WeeklyState(true, false, true)
         val item = AttackOnTimePolicy.Item.MARTIAL_ARMS

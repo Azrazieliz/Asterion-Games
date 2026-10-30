@@ -118,8 +118,6 @@ object GamePlaybooks {
                 "Chaos Clash", "Challenge Chance", "Winner gets"),
             r("Guild Provisions Transport", GoalType.DAILIES,
                 "Provisions Transport", "Dispatched Heroes", "Transport"),
-            r("Guild weekly quests", GoalType.DAILIES,
-                "Quest", "Your Guild Occupies", "Carry out 15 dispatch"),
             r("The World Extractor", GoalType.REWARDS,
                 "The World Extractor", "Allocations", "Output Details"),
             r("Garden planting", GoalType.REWARDS,
