@@ -33,7 +33,7 @@ class ShoujoKaisenResourcesTest {
             p.dispatchStep(s.copy(paidRefreshGuaranteedGoldReturn=50)).action)
         assertEquals(ShoujoKaisenResources.DispatchAction.PAID_REFRESH,
             p.dispatchStep(s.copy(paidRefreshGuaranteedGoldReturn=250)).action)
-        assertEquals(ShoujoKaisenResources.DispatchAction.PAID_REFRESH,
+        assertEquals(ShoujoKaisenResources.DispatchAction.QUICK_DISPATCH,
             p.dispatchStep(s.copy(paidRefreshGuaranteedGoldReturn=249)).action)
         assertEquals(ShoujoKaisenResources.DispatchAction.QUICK_DISPATCH,
             p.dispatchStep(s.copy(paidRefreshGuaranteedGoldReturn=300,paidRefreshesUsed=2)).action)
