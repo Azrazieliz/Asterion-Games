@@ -143,32 +143,40 @@ class MainActivity : Activity() {
                 else "AUTOMATION OFF • alarms cancelled, no game controls",
                 12f, if (enabled) accent else muted))
         })
+        // Two rows remain readable in Android split-screen / narrow widths.
         val nav = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(12), dp(4), dp(12), dp(12))
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(2), dp(12), dp(9))
         }
-        listOf("Accounts", "Automation", "News", "Codex").forEachIndexed { index, name ->
-            val selected = when (index) {
-                0 -> tab == Tab.GAMES
-                1 -> tab == Tab.AUTOMATION
-                2 -> tab == Tab.NEWS
-                else -> false
-            }
-            nav.addView(action(name, selected) {
-                if (index == 3) {
-                    openCodex()
-                } else {
-                    tab = when(index) {
-                        0 -> Tab.GAMES
-                        1 -> Tab.AUTOMATION
-                        else -> Tab.NEWS
-                    }
-                    selectedGameId = null
-                    render()
+        listOf(
+            listOf("Accounts", "Automation"),
+            listOf("News", "Codex")
+        ).forEachIndexed { rowIndex, titles ->
+            val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            titles.forEachIndexed { columnIndex, text ->
+                val index = rowIndex * 2 + columnIndex
+                val selected = when(index) {
+                    0 -> tab == Tab.GAMES
+                    1 -> tab == Tab.AUTOMATION
+                    2 -> tab == Tab.NEWS
+                    else -> false
                 }
-            }, LinearLayout.LayoutParams(0, dp(48), 1f).apply {
-                marginStart = dp(4); marginEnd = dp(4)
-            })
+                line.addView(action(text, selected) {
+                    if (index == 3) openCodex()
+                    else {
+                        tab = when(index) {
+                            0 -> Tab.GAMES
+                            1 -> Tab.AUTOMATION
+                            else -> Tab.NEWS
+                        }
+                        selectedGameId = null
+                        render()
+                    }
+                }, LinearLayout.LayoutParams(0, dp(44), 1f).apply {
+                    marginStart = dp(3); marginEnd = dp(3)
+                })
+            }
+            nav.addView(line, LinearLayout.LayoutParams(-1, dp(49)))
         }
         root.addView(nav)
         val scroll = ScrollView(this).apply {
