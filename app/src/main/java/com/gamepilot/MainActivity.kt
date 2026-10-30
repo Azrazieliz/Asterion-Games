@@ -453,16 +453,27 @@ class MainActivity : Activity() {
         area.addView(label("Game-specific source discovery", 17f, ink, true))
         area.addView(verticalSpace(8))
         Profiles.all(this).filter { it.packageName.isNotBlank() }.forEach { game ->
+            val sources = GameNewsDirectory.candidateSources(game.id)
             area.addView(card().apply {
-                addView(label(game.title, 16f, ink, true))
-                addView(label("Account: " + GameAccounts.region(game.id) +
-                    " • No verified X feed synchronized yet", 12f, muted))
-                addView(verticalSpace(9))
-                addView(action("Find official X posts") {
-                    val query = android.net.Uri.encode(game.title + " official")
-                    startActivity(Intent(Intent.ACTION_VIEW,
-                        android.net.Uri.parse("https://x.com/search?q=$query&f=live")))
-                })
+                addView(label(if (game.id == 26) "Shoujo Kaisen Global"
+                    else if (game.id == 22) "Shoujo Kaisen JP"
+                    else game.title, 16f, ink, true))
+                addView(label(GameNewsDirectory.status(game.id), 12f, muted))
+                sources.forEach { source ->
+                    addView(verticalSpace(7))
+                    addView(action("X • @" + source.handle + " (" + source.locale + ")") {
+                        startActivity(Intent(Intent.ACTION_VIEW,
+                            android.net.Uri.parse(source.publicUrl)))
+                    }, LinearLayout.LayoutParams(-1, dp(43)))
+                }
+                if (sources.isEmpty()) {
+                    addView(verticalSpace(9))
+                    addView(action("Search X for this game") {
+                        val query = android.net.Uri.encode(game.title + " official")
+                        startActivity(Intent(Intent.ACTION_VIEW,
+                            android.net.Uri.parse("https://x.com/search?q=$query&f=live")))
+                    })
+                }
             })
         }
         area.addView(label("News recaps and urgent alerts will require source ingestion, categorization, and notification testing; these are not yet active.",
