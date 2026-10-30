@@ -122,6 +122,13 @@ class Brain(private val context: Context) {
 
     fun choose(game: GameProfile, frame: LiveFrame): Choice? {
         if (pending != null) return null
+        if (game.id == AttackOnTimeVideoProfile.GAME_ID) {
+            val screen = AttackOnTimeVideoProfile.identify(frame.textValues())
+            if (AttackOnTimeVideoProfile.mustPause(screen, frame.textValues())) {
+                Events.record(context, "${game.title}: paused at guarded screen ${screen.name}")
+                return null
+            }
+        }
         if (GameKnowledge.screenUnsafe(frame)) {
             Events.record(context, "${game.title}: transaction/destructive dialogue; automation paused")
             return null

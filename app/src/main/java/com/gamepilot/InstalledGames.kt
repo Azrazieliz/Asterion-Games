@@ -33,7 +33,7 @@ object InstalledGames {
         23 to listOf("7DS", "Seven Deadly Sins"),
         24 to listOf("Fate Grand Order", "Fate GO"),
         25 to listOf("Echocalypse"),
-        26 to listOf("Attack on T")
+        26 to listOf("Attack on Time", "Attack on T")
     )
     private fun normalized(text: String): String =
         text.lowercase(Locale.ROOT).replace(Regex("[^\\p{L}\\p{N}]"), "")

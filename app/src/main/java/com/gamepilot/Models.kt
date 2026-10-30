@@ -12,7 +12,7 @@ object GameRoster {
         "Arknights", "放置少女", "リバ×リバ", "Azur Lane", "Wuthering Waves",
         "Reverse: 1999", "E.T.E Chronicle", "Goddess P…", "Stellar Affin…",
         "TenkafuMA!", "Mirrors High", "Yu-Gi-Oh! Duel Links", "Dokkan",
-        "SLIME IM", "少女廻戦", "7DS", "Fate/GO", "Echocalypse", "Attack on T…"
+        "SLIME IM", "少女廻戦", "7DS", "Fate/GO", "Echocalypse", "Attack on Time"
     )
 }
 

@@ -96,6 +96,37 @@ object GamePlaybooks {
                 "Daily Quests", "Ember Gathering", "QP", "曜日クエスト", "周回"),
             r("Master missions", GoalType.DAILIES,
                 "Master Mission", "マスターミッション", "ミッション")
+        ),
+        // Screen names and activities verified from the 2026-10-30 ADB recording.
+        // No taps or completed objectives are invented from the recording.
+        26 to listOf(
+            r("Monthly Login Rewards", GoalType.REWARDS, "Login Rewards", "Sign In",
+                "Monthly Sign-ins", "Rewards"),
+            r("Conquest Quick Mode", GoalType.REWARDS,
+                "Conquest", "Quick Mode Report", "Claimed", "Quick"),
+            r("Dispatch missions", GoalType.DAILIES,
+                "Dispatch", "Quick Dispatch", "Claim All", "House Repairs",
+                "Courtyard Cleanup", "Forge Weapons"),
+            r("Spacetime Arena", GoalType.DAILIES,
+                "Spacetime Arena", "Current Rank", "Challenge Chance", "Challenge"),
+            r("Outer God Invasion", GoalType.DAILIES,
+                "Outer God Invasion", "Claim 1/1", "Challenge"),
+            r("Galaxy Clash event", GoalType.DAILIES,
+                "Galaxy Clash", "Event Quest", "Rewards", "Raffle Tickets"),
+            r("Chaos Clash", GoalType.DAILIES,
+                "Chaos Clash", "Challenge Chance", "Winner gets"),
+            r("Guild Provisions Transport", GoalType.DAILIES,
+                "Provisions Transport", "Dispatched Heroes", "Transport"),
+            r("Guild weekly quests", GoalType.DAILIES,
+                "Quest", "Your Guild Occupies", "Carry out 15 dispatch"),
+            r("The World Extractor", GoalType.REWARDS,
+                "The World Extractor", "Allocations", "Output Details"),
+            r("Garden planting", GoalType.REWARDS,
+                "Garden", "Successfully Planted", "Plant x1"),
+            r("Ponds fishing", GoalType.REWARDS,
+                "Ponds", "Bertha Pond", "Confirm"),
+            r("Conquest battles", GoalType.FARMING,
+                "Conquest", "Challenge", "Victory", "Stage Rewards")
         )
     )
 
