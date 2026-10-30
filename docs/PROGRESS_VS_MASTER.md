@@ -106,3 +106,12 @@ Do not claim “apps fused and working on-device” merely because both compile.
 - Invalid/unsourced meta rankings no longer displayed as factual rankings in Codex. Evidence ledger stores verified account-specific team outcomes, minimum 12 records before giving an estimate, and no invented character-strength attributions.
 - Game news section created with real X navigation, but personalized X feed and notifications are **not connected**. Official OAuth app credentials and account authorization are required; no fake connection claimed.
 - User has deferred branding to a later stage. This is structural UX functionality, not approved final visual branding.
+
+## 2026-10-30 — Distinct Pause / Resume / Off clarification
+
+Per owner's explicit clarification, "Pause" is **not** a synonym for turning all automation off. Changes on this branch:
+- **Pause** suspends all gameplay inputs, retains active/queued tasks in the persistent job ledger and keeps existing future alarms. It does not erase task progress or terminate live-perception permission.
+- **Resume** restores pending jobs and re-evaluates the current game screen before choosing actions; user-requested Resume ignores the generic 10-minute crash-retry cooldown.
+- **Turn off** is a stronger explicit command: cancel alarms, pending tasks, active controls and live perception; persists until turned back on.
+- Header offers two clearly distinct controls when running (Pause and Turn off), Resume and Turn off when paused, and Turn on when off. A two-row compact Accounts / Automation / News / Codex navigation prevents clipped labels in split-screen.
+- These changes are **committed but require compilation and on-device QA**. A running screen-capture test and interrupted-combat recovery are not yet verified.
