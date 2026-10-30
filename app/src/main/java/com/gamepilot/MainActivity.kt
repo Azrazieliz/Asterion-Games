@@ -341,6 +341,23 @@ class MainActivity : Activity() {
         area.addView(action("Daily goals") { openEditor(p.id, true) },
             LinearLayout.LayoutParams(-1, dp(49)))
         area.addView(verticalSpace(9))
+        area.addView(card().apply {
+            addView(label("Recovery diagnostics",16f,ink,true))
+            addView(label(FailureRecoveryLab.description(this@MainActivity,p.id),13f,muted))
+            if(FailureRecoveryLab.held(this@MainActivity,p.id)) {
+                addView(verticalSpace(8))
+                addView(action("Review complete • allow another attempt") {
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Retry blocked routine?")
+                        .setMessage("The same failure occurred repeatedly. The next run will reassess the live game, not blindly replay a cached gesture.")
+                        .setNegativeButton("Keep blocked",null)
+                        .setPositiveButton("Allow retry") { _, _ ->
+                            FailureRecoveryLab.clear(this@MainActivity,p.id)
+                            render()
+                        }.show()
+                })
+            }
+        })
         area.addView(action("Measured strategy performance") {
             dialog("Strategy experiment evidence", StrategyExperiment.report(this, p))
         }, LinearLayout.LayoutParams(-1, dp(49)))

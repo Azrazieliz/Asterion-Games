@@ -107,6 +107,11 @@ class GameAccessibilityService : AccessibilityService() {
         if (!AutomationControl.running(this)) { stopAll(); return }
         if (active != null || queue.isEmpty()) return
         val p = queue.removeFirst()
+        if (FailureRecoveryLab.held(this,p.id)) {
+            Events.record(this,"${p.title}: review hold, game launch skipped until user clears failed procedure")
+            startNext()
+            return
+        }
         if (getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true) {
             Events.record(this, "${p.title}: device locked; cannot interact")
             startNext()

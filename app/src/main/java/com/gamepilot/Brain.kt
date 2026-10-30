@@ -104,6 +104,7 @@ class Brain(private val context: Context) {
         val stillPresent = values.any { GameKnowledge.explicitSuccess(proof.goal, it) }
         if (stillPresent && frame.time - proof.observedTime < 10_000L) {
             ledger.verify(game.id, proof.goal, proof.label)
+            FailureRecoveryLab.clear(context,game.id)
             update(proof.actionKey, positive = true, verified = true)
             graph.verified(game.id, proof.goal, lastProofScene ?: "", proof.actionKey)
             lastConfirmedAt = frame.time
@@ -264,6 +265,8 @@ class Brain(private val context: Context) {
         return Feedback(changed, evidence != null)
     }
     fun unresolved(game: GameProfile, reason: String) {
+        FailureRecoveryLab.failure(context,game.id,reason,
+            VisionBus.latest?.sceneKey() ?: "No current observed scene")
         GoalSettings.get(context, game.id).filter { it.enabled }.forEach { goal ->
             journal.record(game.id, goal.id, "BLOCKED", null, details = reason)
             val old = ledger.read(game.id, goal)
