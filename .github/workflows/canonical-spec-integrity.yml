@@ -42,3 +42,17 @@ jobs:
             exit 1
           fi
           echo "Frozen canonical purpose and architecture document matches original committed contents."
+          readonly MASTER='docs/MASTER_DECISIONS_FROZEN_20261030.md'
+          readonly MASTER_EXPECTED_BLOB='7ef195e4f8cf052ed5fc848d3b5604ca6758f46f'
+          if [[ ! -f "$MASTER" ]]; then
+            echo "::error::FROZEN MASTER DECISIONS DOCUMENT MISSING: $MASTER"
+            exit 1
+          fi
+          MASTER_ACTUAL="$(git hash-object "$MASTER")"
+          echo "Expected frozen master SHA-1: $MASTER_EXPECTED_BLOB"
+          echo "Current frozen master SHA-1:  $MASTER_ACTUAL"
+          if [[ "$MASTER_ACTUAL" != "$MASTER_EXPECTED_BLOB" ]]; then
+            echo "::error::MASTER DECISIONS MODIFIED WITHOUT EXACT USER AUTHORIZATION."
+            exit 1
+          fi
+          echo "Both frozen specifications match their committed baselines."
