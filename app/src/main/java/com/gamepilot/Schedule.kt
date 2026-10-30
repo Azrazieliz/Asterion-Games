@@ -56,6 +56,10 @@ class ScheduleReceiver : BroadcastReceiver() {
         Scheduler.schedule(context, p)
         if (!p.enabled || p.packageName.isBlank()) return
         ScheduledJobs.enqueue(context, p)
+        if (!AutomationControl.running(context)) {
+            Events.record(context, "${p.title}: scheduled while paused; retained without gameplay input")
+            return
+        }
         val service = GameAccessibilityService.instance
         if (service == null) {
             Events.record(context, "${p.title}: scheduled job queued; accessibility controller not active")

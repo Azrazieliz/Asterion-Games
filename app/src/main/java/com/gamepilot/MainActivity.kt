@@ -123,26 +123,50 @@ class MainActivity : Activity() {
             addView(label("ASTERION", 24f, ink, true))
             addView(label("Game accounts • learning • scheduling", 12f, muted))
             addView(verticalSpace(12))
-            val enabled = AutomationControl.enabled(this@MainActivity)
-            val power = action(if (enabled) "TURN OFF ALL AUTOMATION" else "TURN ON AUTOMATION",
-                !enabled) {
-                if (enabled) {
-                    AutomationControl.setEnabled(this@MainActivity, false)
-                    render()
-                } else {
-                    AutomationControl.setEnabled(this@MainActivity, true)
-                    render()
+            val state = AutomationControl.mode(this@MainActivity)
+            val powerRow = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+            }
+            fun controlButton(text: String, primary: Boolean, operation: () -> Unit) {
+                powerRow.addView(action(text, primary, operation),
+                    LinearLayout.LayoutParams(0, dp(48), 1f).apply {
+                        marginEnd = dp(5)
+                    })
+            }
+            when (state) {
+                AutomationControl.Mode.RUNNING -> {
+                    controlButton("Pause", true) {
+                        AutomationControl.setMode(this@MainActivity, AutomationControl.Mode.PAUSED)
+                        render()
+                    }
+                    controlButton("Turn off", false) {
+                        AutomationControl.setMode(this@MainActivity, AutomationControl.Mode.OFF)
+                        render()
+                    }
+                }
+                AutomationControl.Mode.PAUSED -> {
+                    controlButton("Resume", true) {
+                        AutomationControl.setMode(this@MainActivity, AutomationControl.Mode.RUNNING)
+                        render()
+                    }
+                    controlButton("Turn off", false) {
+                        AutomationControl.setMode(this@MainActivity, AutomationControl.Mode.OFF)
+                        render()
+                    }
+                }
+                AutomationControl.Mode.OFF -> {
+                    controlButton("Turn on", true) {
+                        AutomationControl.setMode(this@MainActivity, AutomationControl.Mode.RUNNING)
+                        render()
+                    }
                 }
             }
-            if (enabled) {
-                power.background = bg(Color.rgb(159, 47, 51), 12)
-                power.setTextColor(Color.WHITE)
-            }
-            addView(power, LinearLayout.LayoutParams(-1, dp(52)))
-            addView(label(if (enabled) "AUTOMATION ON • tap to stop and cancel queued sessions"
-                else "AUTOMATION OFF • alarms cancelled, no game controls",
-                12f, if (enabled) accent else muted))
-        })
+            addView(powerRow)
+            addView(label(when(state) {
+                AutomationControl.Mode.RUNNING -> "ACTIVE • automation may run scheduled tasks"
+                AutomationControl.Mode.PAUSED -> "PAUSED • sessions held, schedules preserved"
+                AutomationControl.Mode.OFF -> "OFF • sessions and alarms cancelled"
+            }, 12f, if (state == AutomationControl.Mode.RUNNING) accent else muted))        })
         // Two rows remain readable in Android split-screen / narrow widths.
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -302,8 +326,8 @@ class MainActivity : Activity() {
         area.addView(action("Run now", true) {
             val ctl = GameAccessibilityService.instance
             when {
-                !AutomationControl.enabled(this) -> Toast.makeText(this,
-                    "Automation is OFF. Enable it using the power control.", Toast.LENGTH_LONG).show()
+                !AutomationControl.running(this) -> Toast.makeText(this,
+                    "Automation is paused or off. Use Resume or Turn on first.", Toast.LENGTH_LONG).show()
                 p.packageName.isBlank() -> Toast.makeText(this, "Link the installed game first", Toast.LENGTH_LONG).show()
                 ctl == null -> Toast.makeText(this, "Enable game control in Automation first", Toast.LENGTH_LONG).show()
                 else -> ctl.enqueue(p)
@@ -341,11 +365,10 @@ class MainActivity : Activity() {
     private fun showAutomation() {
         area.addView(headline("Automation", "A single master control for all scheduled games"))
         area.addView(card().apply {
-            addView(label(if (AutomationControl.enabled(this@MainActivity))
-                "RUNNING / ARMED" else "ALL AUTOMATION STOPPED", 17f,
-                if (AutomationControl.enabled(this@MainActivity)) accent else muted, true))
+            addView(label("Status: " + AutomationControl.mode(this@MainActivity).name, 17f,
+                if (AutomationControl.running(this@MainActivity)) accent else muted, true))
             addView(verticalSpace(7))
-            addView(label("Use TURN OFF ALL AUTOMATION at the top of every screen to cancel alarms, queued jobs, active gameplay and live perception.",
+            addView(label("Pause suspends inputs and retains jobs for Resume. Turn off cancels alarms, pending jobs, gameplay and perception. Both controls remain visible above.",
                 13f, muted))
         })
         val service = GameAccessibilityService.instance != null

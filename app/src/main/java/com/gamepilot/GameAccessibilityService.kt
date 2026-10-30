@@ -40,14 +40,14 @@ class GameAccessibilityService : AccessibilityService() {
         brain = Brain(this)
         Profiles.migrateGame26NoFixedTimeout(this)
         Events.record(this, "Accessibility controller connected")
-        if (AutomationControl.enabled(this)) ScheduledJobs.recover(this).forEach(::enqueue)
+        if (AutomationControl.running(this)) ScheduledJobs.recover(this).forEach(::enqueue)
     }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkg = event.packageName?.toString()
             if (!pkg.isNullOrBlank()) lastWindowPackage = pkg
             val now = System.currentTimeMillis()
-            if (AutomationControl.enabled(this) && now - lastRecoveryTime > 20_000 &&
+            if (AutomationControl.running(this) && now - lastRecoveryTime > 20_000 &&
                 getSystemService(KeyguardManager::class.java)?.isKeyguardLocked != true) {
                 lastRecoveryTime = now
                 ScheduledJobs.recover(this).forEach(::enqueue)
@@ -58,12 +58,29 @@ class GameAccessibilityService : AccessibilityService() {
     override fun onDestroy() { stopAll(); instance = null; super.onDestroy() }
 
     fun enqueue(p: GameProfile) {
-        if (!AutomationControl.enabled(this)) return
+        if (!AutomationControl.running(this)) {
+            if (AutomationControl.enabled(this)) ScheduledJobs.enqueue(this, p)
+            return
+        }
         main.post {
-            if (!AutomationControl.enabled(this)) return@post
+            if (!AutomationControl.running(this)) {
+                if (AutomationControl.enabled(this)) ScheduledJobs.enqueue(this, p)
+                return@post
+            }
             if (queue.none { it.id == p.id } && active?.id != p.id) queue.addLast(p)
             if (active == null) startNext()
         }
+    }
+    /** Immediately invalidates queued callbacks; keeps active and queued jobs persistent. */
+    fun pauseAndRetain() {
+        active?.let { ScheduledJobs.enqueue(this, it) }
+        queue.forEach { ScheduledJobs.enqueue(this, it) }
+        stopAll(cancelPending = false)
+    }
+    /** No blind continuation from stale coordinates; restart from live screen state. */
+    fun recoverPending() {
+        if (!AutomationControl.running(this)) return
+        ScheduledJobs.recover(this).forEach(::enqueue)
     }
     fun stopAll(cancelPending: Boolean = false) {
         generation++
@@ -79,7 +96,7 @@ class GameAccessibilityService : AccessibilityService() {
         Events.record(this, if (cancelPending) "User stopped all jobs" else "Controller stopped")
     }
     private fun startNext() {
-        if (!AutomationControl.enabled(this)) { stopAll(); return }
+        if (!AutomationControl.running(this)) { stopAll(); return }
         if (active != null || queue.isEmpty()) return
         val p = queue.removeFirst()
         if (getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true) {
@@ -204,7 +221,7 @@ class GameAccessibilityService : AccessibilityService() {
             } else main.postDelayed({ adapt(p, id) }, 1500)
             return
         }
-        if (!AutomationControl.enabled(this)) { stopAll(cancelPending = true); return }
+        if (!AutomationControl.running(this)) { stopAll(cancelPending = !AutomationControl.enabled(this)); return }
         GameAccounts.observe(this, p, frame)
         missingFramesSince = 0L
         if (frame.time == lastFrameTime) { main.postDelayed({ adapt(p, id) }, 500); return }
