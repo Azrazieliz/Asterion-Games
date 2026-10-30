@@ -80,11 +80,13 @@ object ImportantGameNews {
             "server closure").any { t.contains(it) }
     }
     private fun readFeed(game:GameProfile):List<Story>{
-        val q=if(game.id==26) "\"Attack on Time\" game"
+        val q=if(game.id==26) "\"Shoujo Kaisen\" OR \"Attack on Time\""
             else if(game.id==22) "\"少女廻戦\" game"
             else "\""+game.title.replace("\"","")+"\" game"
+        val locale=if(game.id==22) "&hl=ja-JP&gl=JP&ceid=JP:ja"
+            else "&hl=en-US&gl=US&ceid=US:en"
         val url="https://news.google.com/rss/search?q="+
-            URLEncoder.encode(q+" when:7d","UTF-8")+"&hl=en-US&gl=US&ceid=US:en"
+            URLEncoder.encode(q+" when:7d","UTF-8")+locale
         val conn=URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout=4500
         conn.readTimeout=4500
@@ -129,7 +131,12 @@ object ImportantGameNews {
         } finally {conn.disconnect()}
     }
     fun sync(context:Context):Int{
+        // Known account-specific news sources take priority over unresearched games.
         val games=Profiles.all(context).filter{it.packageName.isNotBlank()}
+            .sortedWith(compareBy<GameProfile>{
+                when(it.id){26->0;22->1;else->2}
+            }.thenByDescending{GameNewsDirectory.candidateSources(it.id).size}
+                .thenBy{it.id})
         if(games.isEmpty())return 0
         val p=prefs(context)
         val next=p.getInt("cursor",0).coerceAtLeast(0)
