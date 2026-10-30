@@ -130,7 +130,7 @@ class MainActivity : Activity() {
             }
         root.addView(nav)
         val scroll = ScrollView(this).apply {
-            fillViewport = true
+            isFillViewport = true
             isVerticalScrollBarEnabled = false
         }
         area = LinearLayout(this).apply {
@@ -154,7 +154,7 @@ class MainActivity : Activity() {
         val active = profiles.count { it.enabled }
         area.addView(headline("Your games", "${profiles.size} profiles  •  $linked linked  •  $active scheduled"))
         val find = EditText(this).apply {
-            singleLine = true
+            isSingleLine = true
             hint = "Search games"
             textSize = 15f
             setTextColor(ink)
@@ -325,7 +325,7 @@ class MainActivity : Activity() {
                 13f, muted))
             addView(verticalSpace(14))
             addView(action("Open Game Codex", true) {
-                startActivity(Intent(this@MainActivity, net.gamecodex.app.MainActivity::class.java))
+                startActivity(Intent().setClassName(this@MainActivity, "net.gamecodex.app.MainActivity"))
             }, LinearLayout.LayoutParams(-1, dp(53)))
         })
         listOf(26 to "Global account", 22 to "Japanese account").forEach { (gameId, name) ->
