@@ -151,3 +151,17 @@ Branch: `feature/account-ui-safety-meta-news-20261030`. Working source additions
 - **26-game autonomy:** Not verified. Compilation, embedded Codex and QA of home screen are not evidence that games can play independently.
 
 **Data continuity:** Existing standalone `net.gamecodex.app` was untouched. The recorded legacy Codex backup remains on authorized PC. Do not delete the old installation or modify either frozen master without owner approval.
+
+## 2026-10-30 — v0.4.3 usability and real news iteration, Mine War unaffected
+
+Owner supplied a 130.55-second screen recording `1000052505.mp4`. Visual analysis shows an app UI tour, **not** Mine War battle footage. The earlier app showed 26 installed profiles but no verified player IDs; Codex's Global personal roster was empty; News only linked out to X; the screen was crowded with diagnostics.
+
+Implemented in `feature/account-ui-safety-meta-news-20261030`:
+- `GameAccessibilityService.kt` passively detects an explicitly labelled in-game player UID on manual gameplay window/content changes (no gameplay gestures). If live authorized OCR is available, its recent frame may be used; otherwise only accessible UI data is considered. No guessed UID or hidden game-data extraction.
+- Game list distinguishes **installed game** from **verified player UID**. Native installed game icons, short text and contextual actions replace a large technical screen. Global and JP remain separate.
+- Natural three-tab bottom navigation **Games / Activity / News**; game Codex is reached via the corresponding account. Diagnostic details remain secondary.
+- `ImportantGameNews.kt`: actual periodic background fetching of public Google News RSS results, local account/game story cards, initial on-demand auto fetch, and deduplicated high-impact headline alerts. Public reports are always distinguished from authenticated private X-list access (NOT implemented). Direct account/official X feed access still needs authorization and an appropriate API.
+- No phone interaction or game restart was performed during user's imminent Mine War. Gameplay has NOT been autonomously recorded or validated from the app UI video.
+- Old standalone Codex backup on the authorized PC contains a 144-byte WebView local-storage log and no obvious `game_codex_roster` key; there is no evidence of a complete old personal roster to migrate. Catalog and artwork remain bundled, account ownership still requires actual game observation.
+
+Status: committed with Android CI pending verification for the latest head. **Do not label the private X feed or complete owned-roster learning finished.** Neither frozen master has been edited.
