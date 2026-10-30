@@ -119,3 +119,16 @@ Per owner's explicit clarification, "Pause" is **not** a synonym for turning all
 ## 2026-10-30 — Accepted UI/news improvements and discovered X source list
 
 User explicitly accepts notification controls, per-game accounts, evidence-based meta, unified game news, automation status dashboard, and robust backups/reason ledger. User's private X "Games" list was located via authorized ADB; the list has 54 members, 41 unique public handles were visually readable, and 18 matching game source categories were seeded as PUBLIC candidate handles only (private membership dump not committed). Public publisher mappings are not equivalent to ongoing private X-list access. Source of truth and status are in `docs/ACCEPTED_FEATURES_AND_X_SOURCE_PLAN.md`. New features suggested there remain unapproved proposals; no frozen document changed.
+
+## 2026-10-30 — Implementation batch v0.4.2 (new actual code)
+
+Branch: `feature/account-ui-safety-meta-news-20261030`. Working source additions, status **committed**:
+
+1. `AutomationNotification.kt`: Android notification shade **Pause, Resume and Turn off** as real explicit broadcast commands. The same persistent state gates the scheduler, accessibility controller and UI. Android 13+ notification permission and live device interactions remain to be verified.
+2. `StrategyExperiment.kt`: account + objective scoped verified session outcome metrics (completion rate, elapsed duration, actions). At least five comparable runs per method and no higher failure rate are required to support a faster variant. This is **measured evaluation**, not automatic proof that one game is mastered. Strategy changes are not automatically promoted; existing user selections are preserved.
+3. `FailureRecoveryLab.kt`: persistent and explainable repeated-failure holds, avoiding endless autonomous attempts; a game-specific UI control explicitly clears the hold for another try. Verified goal evidence clears a hold automatically.
+4. `SafeExploration.kt`: safely inspect explicit read-only Help/Guide/Details screens on previously unexplored non-Shoujo games after no safe objective action exists; actions are logged as research, never credited as completion or permission to spend. No paid action or scripted transaction is run as exploration.
+5. Existing `MainActivity` shows measured strategy evidence and game-specific recovery diagnostics. Shoujo Global/JP remain separate.
+6. JUnit tests added for strategy outcome comparisons, failure repetition/expiry, and read-only action selection. GitHub compilation and tests must be checked for this exact commit; on-device behavior is not yet verified.
+
+**Do not claim** UI/notification tests or autonomous game mastery completed without actual ADB/device evidence. The former Codex private data migration remains outstanding. Do not modify either frozen master.
