@@ -54,6 +54,7 @@ object AutomationControl {
                 Events.record(context, "RUNNING: resumes retained jobs after rechecking live game state")
             }
         }
+        AutomationNotification.refresh(context)
         return true
     }
     fun setEnabled(context: Context, enabled: Boolean): Boolean =

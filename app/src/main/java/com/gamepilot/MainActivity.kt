@@ -95,6 +95,7 @@ class MainActivity : Activity() {
         window.decorView.systemUiVisibility = 0
         Profiles.migrateGame26NoFixedTimeout(this)
         InstalledGames.autoLink(this)
+        AutomationNotification.refresh(this)
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 30)

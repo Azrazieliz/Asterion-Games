@@ -21,6 +21,7 @@
             <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service"/>
         </service>
         <service android:name=".LiveVisionService" android:exported="false" android:foregroundServiceType="mediaProjection"/>
+        <receiver android:name=".AutomationCommandReceiver" android:exported="false"/>
         <receiver android:name=".ScheduleReceiver" android:exported="false"/>
         <receiver android:name=".BootReceiver" android:exported="false">
             <intent-filter>

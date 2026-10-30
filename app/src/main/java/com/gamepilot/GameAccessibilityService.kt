@@ -40,6 +40,7 @@ class GameAccessibilityService : AccessibilityService() {
         brain = Brain(this)
         Profiles.migrateGame26NoFixedTimeout(this)
         Events.record(this, "Accessibility controller connected")
+        AutomationNotification.refresh(this)
         if (AutomationControl.running(this)) ScheduledJobs.recover(this).forEach(::enqueue)
     }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
