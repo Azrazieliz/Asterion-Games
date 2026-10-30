@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 jobs:
@@ -97,6 +97,31 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs \
             app/build/outputs/apk/debug/app-debug.apk > app/build/outputs/apk/debug/SIGNING_CERTIFICATE.txt
           grep 'Signer #1 certificate SHA-256 digest' app/build/outputs/apk/debug/SIGNING_CERTIFICATE.txt
+      - name: Require previously installed Asterion signing certificate
+        run: |
+          grep -qi '060d52c4d8333f6b81c7cca6d8414e1a9f8a487ca0fe32fa5bbc2c34987c112a' app/build/outputs/apk/debug/SIGNING_CERTIFICATE.txt
+      - name: Publish direct-install v0.4.4 APK release
+        if: github.ref == 'refs/heads/feature/account-ui-safety-meta-news-20261030'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          mkdir -p /tmp/asterion-release
+          cp "$APK" /tmp/asterion-release/Asterion-v0.4.4-unified.apk
+          cp app/build/outputs/apk/debug/SIGNING_CERTIFICATE.txt /tmp/asterion-release/
+          sha256sum /tmp/asterion-release/Asterion-v0.4.4-unified.apk > /tmp/asterion-release/APK_SHA256.txt
+          if gh release view v0.4.4-unified >/dev/null 2>&1; then
+            echo 'Existing release preserved; no overwrite'
+          else
+            gh release create v0.4.4-unified \
+              /tmp/asterion-release/Asterion-v0.4.4-unified.apk \
+              /tmp/asterion-release/SIGNING_CERTIFICATE.txt \
+              /tmp/asterion-release/APK_SHA256.txt \
+              --target "$GITHUB_SHA" \
+              --title 'Asterion v0.4.4 — Pilot + Codex' \
+              --notes 'Signed unified Android APK, built from the tested source. No uninstall or clear-data required when installer signature matches. Mine Wars rules are not yet autonomous.' 
       - name: Publish complete unified app
         uses: actions/upload-artifact@v4
         with:
