@@ -1,433 +1,419 @@
 package com.gamepilot
 
 import android.Manifest
-import java.io.ByteArrayOutputStream
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
-import android.widget.*
+import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import android.widget.Toast
+import java.io.ByteArrayOutputStream
 
+/**
+ * Unified single-app home. Full existing Codex runs as an embedded activity,
+ * while all Pilot settings and learning data continue in this same package.
+ */
 class MainActivity : Activity() {
-    private lateinit var container: LinearLayout
+    private enum class Tab { GAMES, AUTOMATION, CODEX }
+    private val ink = Color.rgb(237, 242, 250)
+    private val muted = Color.rgb(151, 164, 183)
+    private val dark = Color.rgb(12, 17, 28)
+    private val panel = Color.rgb(25, 34, 49)
+    private val accent = Color.rgb(94, 164, 238)
+    private val outline = Color.rgb(50, 64, 84)
     private val projectionRequest = 101
     private val exportRequest = 102
     private val importRequest = 103
+    private var tab = Tab.GAMES
+    private var selectedGameId: Int? = null
+    private lateinit var root: LinearLayout
+    private lateinit var area: LinearLayout
 
+    private fun dp(n: Int): Int = (n * resources.displayMetrics.density).toInt()
+    private fun bg(color: Int, radius: Int = 17, border: Boolean = false): GradientDrawable =
+        GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = dp(radius).toFloat()
+            if (border) setStroke(dp(1), outline)
+        }
+    private fun label(value: String, size: Float = 14f, color: Int = ink,
+                      bold: Boolean = false): TextView = TextView(this).apply {
+        text = value
+        textSize = size
+        setTextColor(color)
+        if (bold) typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        includeFontPadding = true
+    }
+    private fun card(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        background = bg(panel, 16, true)
+        setPadding(dp(16), dp(15), dp(16), dp(15))
+        layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(11) }
+    }
+    private fun action(title: String, primary: Boolean = false, click: () -> Unit): Button =
+        Button(this).apply {
+            text = title
+            textSize = 13f
+            isAllCaps = false
+            setTextColor(if (primary) dark else ink)
+            background = bg(if (primary) accent else Color.rgb(37, 50, 69), 12)
+            setOnClickListener { click() }
+            minHeight = dp(44)
+            minimumHeight = dp(44)
+        }
+    private fun verticalSpace(px: Int) = View(this).apply {
+        layoutParams = LinearLayout.LayoutParams(1, dp(px))
+    }
+    private fun headline(title: String, subtitle: String): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(label(title, 21f, ink, true))
+            addView(label(subtitle, 12.5f, muted))
+            addView(verticalSpace(14))
+        }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(24, 20, 24, 20)
-        }
-        setContentView(ScrollView(this).apply { addView(container) })
-        if (Build.VERSION.SDK_INT >= 33 &&
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 30)
-        }
+        window.statusBarColor = dark
+        window.navigationBarColor = dark
+        window.decorView.systemUiVisibility = 0
         Profiles.migrateGame26NoFixedTimeout(this)
         InstalledGames.autoLink(this)
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 30)
         render()
     }
-    override fun onResume() { super.onResume(); if (::container.isInitialized) render() }
-
+    override fun onResume() {
+        super.onResume()
+        if (::root.isInitialized) render()
+    }
     private fun render() {
-        container.removeAllViews()
-        text("Asterion Pilot", 24)
-        text("26 game profiles • live perception • direct gestures • on-device policy learning", 15)
-        text("Accessibility: ${if (GameAccessibilityService.instance == null) "Not connected" else "Connected"} | Live frames: ${if (LiveVisionService.running) "Running" else "Off"}", 14)
-        text("Android requires approving each new live display-capture session. Screen lock and background launches can block automation.", 13)
-        button("1. Enable direct screen control") {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-        }
-        button("2. Start live screen perception") {
-            val manager = getSystemService(MediaProjectionManager::class.java)
-            startActivityForResult(manager.createScreenCaptureIntent(), projectionRequest)
-        }
-        button("3. Configure exact scheduling permission") {
-            if (Build.VERSION.SDK_INT >= 31) {
-                startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
-            }
-        }
-        button("Stop all gameplay") {
-            GameAccessibilityService.instance?.stopAll(cancelPending = true)
-            Toast.makeText(this, "Gameplay queue stopped", Toast.LENGTH_SHORT).show()
-        }
-        button("Stop live screen access") {
-            stopService(Intent(this, LiveVisionService::class.java))
-            render()
-        }
-        text("Status: ${Events.current}", 14)
-        text("Pending scheduled jobs: ${ScheduledJobs.pendingCount(this)}", 13)
-        text("Today's task completion is counted only after verified game evidence, never from a timer.", 13)
-        button("Show activity / learning log") {
-            AlertDialog.Builder(this).setTitle("Automation history")
-                .setMessage(Events.history(this).take(5000).ifBlank { "No activity yet." })
-                .setPositiveButton("Close", null).show()
-        }
-        button("Export profiles + learned game mastery") {
-            val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE)
-                type = "application/json"
-                putExtra(Intent.EXTRA_TITLE, "AsterionPilot-learning-backup.json")
-            }
-            startActivityForResult(intent, exportRequest)
-        }
-        button("Restore saved game mastery") {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE)
-                type = "application/json"
-            }
-            startActivityForResult(intent, importRequest)
-        }
-        button("Auto-link installed games") {
-            val linked = InstalledGames.autoLink(this)
-            Toast.makeText(this, "$linked newly matched installed games", Toast.LENGTH_LONG).show()
-            render()
-        }
-        button("Add another Android game") {
-            val id = (Profiles.all(this).maxOfOrNull { it.id } ?: 0) + 1
-            edit(GameProfile(id, "New Game", "", 6, 0, false, emptyList()))
-        }
-        text("Games (matched automatically where possible; tap Edit for schedules or unmatched titles)", 17)
-        Profiles.all(this).forEach { p ->
-            val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-            val status = if (p.enabled) "Scheduled" else "Off"
-            row.addView(TextView(this).apply {
-                text = "${p.id}. ${p.title} • $status • %02d:%02d • ${if (p.packageName.isBlank()) "Unlinked" else "Linked"}".format(p.hour, p.minute)
-                textSize = 15f
-            })
-            val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            actions.addView(Button(this).apply {
-                text = "Edit"
-                setOnClickListener { edit(p) }
-            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            actions.addView(Button(this).apply {
-                text = "Run now"
-                isEnabled = p.packageName.isNotBlank()
-                setOnClickListener {
-                    val service = GameAccessibilityService.instance
-                    if (service == null) {
-                        Toast.makeText(this@MainActivity, "Enable Accessibility first", Toast.LENGTH_LONG).show()
-                    } else service.enqueue(p)
-                }
-            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            row.addView(actions)
-            val taskControls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            taskControls.addView(Button(this).apply {
-                text = "Tasks / targets"
-                setOnClickListener { editGoals(p) }
-            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            taskControls.addView(Button(this).apply {
-                text = "Results"
-                setOnClickListener {
-                    AlertDialog.Builder(this@MainActivity)
-                        .setTitle(p.title + " — today's verified results")
-                        .setMessage(GoalLedger(this@MainActivity).report(p.id))
-                        .setPositiveButton("Close", null).show()
-                }
-            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            row.addView(Button(this).apply {
-                text = "Game-specific farming / daily playbook"
-                setOnClickListener {
-                    AlertDialog.Builder(this@MainActivity)
-                        .setTitle(p.title + " — gameplay plan")
-                        .setMessage(GamePlaybooks.overview(p.id))
-                        .setPositiveButton("Close", null).show()
-                }
-            })
-            if (p.id == AttackOnTimeVideoProfile.GAME_ID) {
-                row.addView(Button(this).apply {
-                    text = "Training: 15-minute Attack on Time recording"
-                    setOnClickListener {
-                        val timeline = AttackOnTimeVideoProfile.observations.joinToString("\n\n") { item ->
-                            val from = "%02d:%02d".format(item.startSecond / 60, item.startSecond % 60)
-                            val until = "%02d:%02d".format(item.endSecond / 60, item.endSecond % 60)
-                            "$from–$until  ${item.scene.name.replace('_', ' ')}\n${item.evidence}"
-                        }
-                        AlertDialog.Builder(this@MainActivity)
-                            .setTitle("Attack on Time — video demonstration")
-                            .setMessage("Observed screens, not automatically completed tasks.\n\n" + timeline)
-                            .setPositiveButton("Close", null).show()
-                    }
-                })
-            }
-            if (GameCodexBridge.accountFor(p.id) != null) {
-                row.addView(Button(this).apply {
-                    text = "Codex experimental strategy shortlist"
-                    setOnClickListener {
-                        AlertDialog.Builder(this@MainActivity)
-                            .setTitle(p.title + " — Codex character research")
-                            .setMessage(CodexStrategyAdvisor.overview(this@MainActivity, p.id))
-                            .setPositiveButton("Close", null).show()
-                    }
-                })
-                row.addView(Button(this).apply {
-                    text = "Sync Game Codex • " + GameCodexBridge.accountFor(p.id)
-                    setOnClickListener {
-                        val result = GameCodexBridge.refresh(this@MainActivity, p.id)
-                        AlertDialog.Builder(this@MainActivity)
-                            .setTitle("Codex integration — " + result.state.name)
-                            .setMessage(
-                                "Account: " + result.account + "\\n" +
-                                "Known owned characters: " + result.ownedCount + "\\n" +
-                                "Details: " + result.note + "\\n\\n" +
-                                GameCodexBridge.status(this@MainActivity, p.id)
-                            )
-                            .setPositiveButton("Close", null).show()
-                    }
-                })
-            }
-            if (ShoujoKaisenResources.account(p.id) != null) {
-                row.addView(Button(this).apply {
-                    text = "Shoujo Kaisen — resource allocation rules"
-                    setOnClickListener {
-                        AlertDialog.Builder(this@MainActivity)
-                            .setTitle(p.title + " — resource policy")
-                            .setMessage(ShoujoKaisenResources.overview(p.id))
-                            .setPositiveButton("Close", null).show()
-                    }
-                })
-            }
-            row.addView(taskControls)
-            row.addView(Button(this).apply {
-                text = "Inspect learned gameplay history"
-                setOnClickListener {
-                    AlertDialog.Builder(this@MainActivity)
-                        .setTitle(p.title + " — learning trace")
-                        .setMessage(EpisodeJournal(this@MainActivity).recent(p.id, 30))
-                        .setPositiveButton("Close", null).show()
-                }
-            })
-            row.setPadding(0, 15, 0, 15)
-            container.addView(row)
-        }
-    }
-
-    private fun edit(p: GameProfile) {
-        val layout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(14, 14, 14, 14) }
-        val name = field(layout, "Name", p.title)
-        val pkg = field(layout, "Game's Android package name", p.packageName)
-        layout.addView(Button(this).apply {
-            text = "Find installed games"
-            setOnClickListener {
-                val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-                val apps = packageManager.queryIntentActivities(launcher, 0)
-                    .map { it.loadLabel(packageManager).toString() to it.activityInfo.packageName }
-                    .distinctBy { it.second }
-                    .sortedBy { it.first.lowercase() }
-                if (apps.isEmpty()) {
-                    Toast.makeText(this@MainActivity, "No launchable apps found", Toast.LENGTH_LONG).show()
-                } else AlertDialog.Builder(this@MainActivity)
-                    .setTitle("Select installed game")
-                    .setItems(apps.map { "${it.first} (${it.second})" }.toTypedArray()) { _, i ->
-                        pkg.setText(apps[i].second)
-                    }.show()
-            }
-        })
-        val hour = field(layout, "Local hour (0–23)", p.hour.toString())
-        val minute = field(layout, "Minute (0–59)", p.minute.toString())
-        val duration = field(layout, "Maximum session minutes (0 = until objectives complete)", p.maxMinutes.toString())
-        val reset = field(layout, "Daily reset hour in phone local time (0–23)", p.resetHour.toString())
-        val enabled = CheckBox(this).apply {
-            text = "Enable daily scheduled run"
-            isChecked = p.enabled
-            layout.addView(this)
-        }
-        val adaptive = CheckBox(this).apply {
-            text = "Adaptive live vision and learning (unchecked: exact scripted sequence)"
-            isChecked = p.adaptive
-            layout.addView(this)
-        }
-        val steps = field(layout,
-            "Optional action examples: tap 0.5 0.8 | swipe 0.8 0.5 0.2 0.5 | wait 1000 | text Claim",
-            p.actions.joinToString("\n") { step ->
-                when (step) {
-                    is GameAction.Tap -> "tap ${step.x} ${step.y}"
-                    is GameAction.Swipe -> "swipe ${step.x1} ${step.y1} ${step.x2} ${step.y2}"
-                    is GameAction.Wait -> "wait ${step.milliseconds}"
-                    is GameAction.ClickText -> "text ${step.text}"
-                }
-            }).apply { minLines = 4 }
-        val dialog = AlertDialog.Builder(this).setTitle("Game ${p.id}")
-            .setView(ScrollView(this).apply { addView(layout) })
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Save", null).create()
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                try {
-                    val h = hour.text.toString().toInt()
-                    val m = minute.text.toString().toInt()
-                    val cap = duration.text.toString().toInt()
-                    val resetAt = reset.text.toString().toInt()
-                    require(h in 0..23 && m in 0..59 && cap >= 0 && resetAt in 0..23) { "Invalid time or duration" }
-                    val script = steps.text.toString().lines().filter { it.isNotBlank() }.map(::parseStep)
-                    val updated = p.copy(
-                        title = name.text.toString().trim(),
-                        packageName = pkg.text.toString().trim(),
-                        hour = h, minute = m, enabled = enabled.isChecked,
-                        adaptive = adaptive.isChecked, actions = script, maxMinutes = cap,
-                        resetHour = resetAt
-                    )
-                    require(updated.title.isNotBlank()) { "Game name is required" }
-                    require(!updated.enabled || updated.packageName.isNotBlank()) { "Choose an installed game before enabling its schedule" }
-                    Profiles.save(this, Profiles.all(this).filter { it.id != updated.id } + updated)
-                    Scheduler.schedule(this, updated)
-                    dialog.dismiss()
-                    render()
-                } catch (error: Exception) {
-                    Toast.makeText(this, error.message ?: "Invalid settings", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-        dialog.show()
-    }
-
-    private fun editGoals(p: GameProfile) {
-        val goals = GoalSettings.get(this, p.id)
-        val layout = LinearLayout(this).apply {
+        root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(18, 12, 18, 12)
+            setBackgroundColor(dark)
         }
-        val controls = goals.map { goal ->
-            val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-            val check = CheckBox(this).apply {
-                text = goal.title
-                isChecked = goal.enabled
-                row.addView(this)
-            }
-            val count = EditText(this).apply {
-                inputType = android.text.InputType.TYPE_CLASS_NUMBER
-                hint = "Verified runs required"
-                setText(goal.targetRuns.toString())
-                row.addView(this)
-            }
-            val keywords = EditText(this).apply {
-                hint = "Additional game UI words (comma separated)"
-                setText(goal.customCues.joinToString(", "))
-                row.addView(this)
-            }
-            layout.addView(row)
-            Triple(check, count, keywords)
+        root.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(19), dp(16), dp(19), dp(10))
+            addView(label("ASTERION", 24f, ink, true))
+            addView(label("Game automation and character intelligence", 12f, muted))
+        })
+        val nav = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(12), dp(4), dp(12), dp(12))
         }
-        val dialog = AlertDialog.Builder(this)
-            .setTitle("Objectives: ${p.title}")
-            .setMessage("Every enabled goal must have verified in-game evidence. Add UI cues discovered from actual gameplay; unverified goals remain incomplete.")
-            .setView(ScrollView(this).apply { addView(layout) })
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Save", null).create()
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                try {
-                    val updated = goals.mapIndexed { i, goal ->
-                        val (check, count, keywords) = controls[i]
-                        val target = count.text.toString().toInt()
-                        require(target in 1..999) { "Runs must be from 1 to 999" }
-                        goal.copy(
-                            enabled = check.isChecked,
-                            targetRuns = target,
-                            customCues = keywords.text.toString().split(",")
-                                .map { it.trim() }.filter { it.isNotBlank() }.take(30)
-                        )
-                    }
-                    GoalSettings.save(this, p.id, updated)
-                    dialog.dismiss()
+        listOf(Tab.GAMES to "Games", Tab.AUTOMATION to "Automation", Tab.CODEX to "Game Codex")
+            .forEach { (option, text) ->
+                nav.addView(action(text, tab == option) {
+                    tab = option
+                    selectedGameId = null
                     render()
-                } catch (error: Exception) {
-                    Toast.makeText(this, error.message ?: "Invalid goals", Toast.LENGTH_LONG).show()
+                }, LinearLayout.LayoutParams(0, dp(48), 1f).apply {
+                    marginStart = dp(4); marginEnd = dp(4)
+                })
+            }
+        root.addView(nav)
+        val scroll = ScrollView(this).apply {
+            fillViewport = true
+            isVerticalScrollBarEnabled = false
+        }
+        area = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(5), dp(16), dp(26))
+        }
+        scroll.addView(area)
+        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        setContentView(root)
+        when (tab) {
+            Tab.GAMES -> showGames()
+            Tab.AUTOMATION -> showAutomation()
+            Tab.CODEX -> showCodex()
+        }
+    }
+    private fun showGames() {
+        val selected = selectedGameId?.let { id -> Profiles.all(this).firstOrNull { it.id == id } }
+        if (selected != null) { gameDetail(selected); return }
+        val profiles = Profiles.all(this)
+        val linked = profiles.count { it.packageName.isNotBlank() }
+        val active = profiles.count { it.enabled }
+        area.addView(headline("Your games", "${profiles.size} profiles  •  $linked linked  •  $active scheduled"))
+        val find = EditText(this).apply {
+            singleLine = true
+            hint = "Search games"
+            textSize = 15f
+            setTextColor(ink)
+            setHintTextColor(muted)
+            setPadding(dp(15), dp(8), dp(15), dp(8))
+            background = bg(panel, 12, true)
+        }
+        area.addView(find, LinearLayout.LayoutParams(-1, dp(52)))
+        area.addView(verticalSpace(14))
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        area.addView(list)
+        fun fill(query: String) {
+            list.removeAllViews()
+            profiles.sortedWith(compareBy<GameProfile> {
+                if (it.id == 26) 0 else if (it.id == 22) 1 else 2
+            }.thenBy { it.id }).filter {
+                it.title.contains(query, true) || it.packageName.contains(query, true)
+            }.forEach { game ->
+                val c = card()
+                c.addView(label(game.title, 16f, ink, true))
+                val state = when {
+                    game.packageName.isBlank() -> "Not linked"
+                    game.enabled -> "Scheduled  •  %02d:%02d".format(game.hour, game.minute)
+                    else -> "Linked  •  Schedule off"
                 }
+                c.addView(label(state, 12.5f, if (game.enabled) accent else muted))
+                c.setOnClickListener { selectedGameId = game.id; render() }
+                list.addView(c)
             }
         }
-        dialog.show()
+        fill("")
+        find.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                fill(s?.toString() ?: "")
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+        area.addView(action("Find installed games") {
+            val linkedNow = InstalledGames.autoLink(this)
+            Toast.makeText(this, "$linkedNow newly linked games", Toast.LENGTH_SHORT).show()
+            render()
+        }, LinearLayout.LayoutParams(-1, dp(48)))
+        area.addView(verticalSpace(9))
+        area.addView(action("Add a game") {
+            val id = (Profiles.all(this).maxOfOrNull { it.id } ?: 0) + 1
+            Profiles.save(this, Profiles.all(this) +
+                GameProfile(id, "New Game", "", 6, 0, false, emptyList()))
+            openEditor(id, false)
+        }, LinearLayout.LayoutParams(-1, dp(48)))
     }
-
-    private fun parseStep(line: String): GameAction {
-        val values = line.trim().split(Regex("\\s+"))
-        fun fraction(value: String): Float = value.toFloat().also { require(it in 0f..1f) }
-        return when (values[0].lowercase()) {
-            "tap" -> {
-                require(values.size == 3)
-                GameAction.Tap(fraction(values[1]), fraction(values[2]))
+    private fun gameDetail(p: GameProfile) {
+        area.addView(action("Back to games") {
+            selectedGameId = null
+            render()
+        }, LinearLayout.LayoutParams(-1, dp(46)))
+        area.addView(verticalSpace(14))
+        area.addView(headline(p.title,
+            (if (p.packageName.isBlank()) "Not linked" else "Installed game linked") +
+                "  •  " + (if (p.enabled) "Scheduled" else "Not scheduled")))
+        val summary = card().apply {
+            addView(label("Today's objectives", 16f, ink, true))
+            addView(verticalSpace(8))
+            addView(label(GoalLedger(this@MainActivity).report(p.id), 13f, muted))
+        }
+        area.addView(summary)
+        area.addView(action("Run now", true) {
+            val ctl = GameAccessibilityService.instance
+            when {
+                p.packageName.isBlank() -> Toast.makeText(this, "Link the installed game first", Toast.LENGTH_LONG).show()
+                ctl == null -> Toast.makeText(this, "Enable game control in Automation first", Toast.LENGTH_LONG).show()
+                else -> ctl.enqueue(p)
             }
-            "swipe" -> {
-                require(values.size == 5)
-                GameAction.Swipe(fraction(values[1]), fraction(values[2]), fraction(values[3]), fraction(values[4]))
-            }
-            "wait" -> {
-                require(values.size == 2)
-                GameAction.Wait(values[1].toLong().also { require(it in 0..600000) })
-            }
-            "text" -> GameAction.ClickText(line.substringAfter(" ").trim().also { require(it.isNotBlank()) })
-            else -> error("Invalid action: ${values[0]}")
+        }, LinearLayout.LayoutParams(-1, dp(50)).also { })
+        area.addView(verticalSpace(9))
+        area.addView(action("Schedule and game settings") { openEditor(p.id, false) },
+            LinearLayout.LayoutParams(-1, dp(49)))
+        area.addView(verticalSpace(9))
+        area.addView(action("Daily goals") { openEditor(p.id, true) },
+            LinearLayout.LayoutParams(-1, dp(49)))
+        area.addView(verticalSpace(9))
+        area.addView(action("Gameplay history") {
+            dialog("Learned gameplay", EpisodeJournal(this).recent(p.id))
+        }, LinearLayout.LayoutParams(-1, dp(49)))
+        area.addView(verticalSpace(9))
+        area.addView(action("Game playbook") {
+            dialog("Gameplay rules", GamePlaybooks.overview(p.id) +
+                if (ShoujoKaisenResources.account(p.id) != null)
+                    "\n\n" + ShoujoKaisenResources.overview(p.id) else "")
+        }, LinearLayout.LayoutParams(-1, dp(49)))
+        if (GameCodexBridge.accountFor(p.id) != null) {
+            area.addView(verticalSpace(9))
+            area.addView(action("Open character knowledge") {
+                tab = Tab.CODEX; selectedGameId = null; render()
+            }, LinearLayout.LayoutParams(-1, dp(49)))
         }
     }
-    private fun field(layout: LinearLayout, hint: String, value: String): EditText =
-        EditText(this).apply {
-            this.hint = hint
-            setText(value)
-            layout.addView(this, ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        }
-    private fun text(value: String, size: Int) {
-        container.addView(TextView(this).apply {
-            text = value; textSize = size.toFloat(); setPadding(0, 9, 0, 9)
+    private fun showAutomation() {
+        area.addView(headline("Automation", "Controls, permissions and current activity"))
+        val service = GameAccessibilityService.instance != null
+        val capture = LiveVisionService.running
+        area.addView(card().apply {
+            addView(label("System readiness", 17f, ink, true))
+            addView(verticalSpace(9))
+            addView(label("Game control: " + if (service) "Connected" else "Not connected",
+                14f, if (service) accent else muted))
+            addView(label("Live screen perception: " + if (capture) "Active" else "Not active",
+                14f, if (capture) accent else muted))
+            addView(label("Queued games: ${ScheduledJobs.pendingCount(this@MainActivity)}", 14f, muted))
+            addView(verticalSpace(9))
+            addView(label("Android may require capture permission again after a new session.",
+                12f, muted))
+        })
+        val controls = card().apply { addView(label("Set up once, then run", 16f, ink, true)) }
+        controls.addView(verticalSpace(8))
+        controls.addView(action("Enable game control", true) {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }, LinearLayout.LayoutParams(-1, dp(48)))
+        controls.addView(verticalSpace(8))
+        controls.addView(action("Start live perception") {
+            val mgr = getSystemService(MediaProjectionManager::class.java)
+            startActivityForResult(mgr.createScreenCaptureIntent(), projectionRequest)
+        }, LinearLayout.LayoutParams(-1, dp(48)))
+        controls.addView(verticalSpace(8))
+        controls.addView(action("Scheduling permission") {
+            if (Build.VERSION.SDK_INT >= 31)
+                startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+        }, LinearLayout.LayoutParams(-1, dp(48)))
+        area.addView(controls)
+        area.addView(card().apply {
+            addView(label("Session controls", 16f, ink, true))
+            addView(verticalSpace(8))
+            addView(action("Stop all game sessions") {
+                GameAccessibilityService.instance?.stopAll(cancelPending = true)
+                render()
+            }, LinearLayout.LayoutParams(-1, dp(48)))
+            addView(verticalSpace(8))
+            addView(action("Stop live perception") {
+                stopService(Intent(this@MainActivity, LiveVisionService::class.java))
+                render()
+            }, LinearLayout.LayoutParams(-1, dp(48)))
+            addView(verticalSpace(8))
+            addView(action("See activity log") {
+                dialog("Activity log", Events.history(this@MainActivity).take(9000)
+                    .ifBlank { "No activity recorded yet." })
+            }, LinearLayout.LayoutParams(-1, dp(48)))
+        })
+        area.addView(card().apply {
+            addView(label("Backups and advanced settings", 16f, ink, true))
+            addView(verticalSpace(8))
+            addView(action("Export learning data") { chooseBackup(true) },
+                LinearLayout.LayoutParams(-1, dp(48)))
+            addView(verticalSpace(8))
+            addView(action("Restore learning data") { chooseBackup(false) },
+                LinearLayout.LayoutParams(-1, dp(48)))
+            addView(verticalSpace(8))
+            addView(action("Advanced settings") {
+                startActivity(Intent(this@MainActivity, AdvancedSettingsActivity::class.java))
+            }, LinearLayout.LayoutParams(-1, dp(48)))
         })
     }
-    private fun button(label: String, action: () -> Unit) {
-        container.addView(Button(this).apply { text = label; setOnClickListener { action() } })
+    private fun showCodex() {
+        area.addView(headline("Game Codex", "Characters, equipment, teams and analysis in this app"))
+        area.addView(card().apply {
+            addView(label("Shoujo Kaisen knowledge", 18f, ink, true))
+            addView(verticalSpace(6))
+            addView(label("Full original character catalogue, artwork, rankings, team builder and equipment systems.",
+                13f, muted))
+            addView(verticalSpace(14))
+            addView(action("Open Game Codex", true) {
+                startActivity(Intent(this@MainActivity, net.gamecodex.app.MainActivity::class.java))
+            }, LinearLayout.LayoutParams(-1, dp(53)))
+        })
+        listOf(26 to "Global account", 22 to "Japanese account").forEach { (gameId, name) ->
+            area.addView(card().apply {
+                addView(label(name, 16f, ink, true))
+                addView(verticalSpace(6))
+                addView(label(GameCodexBridge.status(this@MainActivity, gameId), 13f, muted))
+                addView(verticalSpace(9))
+                addView(action("Refresh character data") {
+                    val result = GameCodexBridge.refresh(this@MainActivity, gameId)
+                    dialog(name, "${result.state}: ${result.ownedCount} owned entries\n${result.note}")
+                    render()
+                }, LinearLayout.LayoutParams(-1, dp(46)))
+                addView(verticalSpace(6))
+                addView(action("Character strategy overview") {
+                    dialog(name, CodexStrategyAdvisor.overview(this@MainActivity, gameId))
+                }, LinearLayout.LayoutParams(-1, dp(46)))
+            })
+        }
+        area.addView(label("Game Codex data is research evidence, not permission to spend resources or grade heroes.",
+            12f, muted))
     }
-
-    @Deprecated("Uses Activity result to preserve the dependency-free Activity implementation.")
+    private fun dialog(title: String, message: String) {
+        AlertDialog.Builder(this).setTitle(title).setMessage(message)
+            .setPositiveButton("Close", null).show()
+    }
+    private fun openEditor(gameId: Int, goals: Boolean) {
+        startActivity(Intent(this, AdvancedSettingsActivity::class.java)
+            .putExtra("edit_game_id", gameId).putExtra("edit_goals", goals))
+    }
+    private fun chooseBackup(export: Boolean) {
+        val intent = Intent(if (export) Intent.ACTION_CREATE_DOCUMENT else Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            if (export) putExtra(Intent.EXTRA_TITLE, "Asterion-learning-backup.json")
+        }
+        startActivityForResult(intent, if (export) exportRequest else importRequest)
+    }
+    @Deprecated("Activity results maintained for existing Android 29+ support.")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == projectionRequest && resultCode == Activity.RESULT_OK && data != null) {
-            val intent = Intent(this, LiveVisionService::class.java)
-                .putExtra(LiveVisionService.EXTRA_CODE, resultCode)
-                .putExtra(LiveVisionService.EXTRA_DATA, data)
-            startForegroundService(intent)
-        } else if (requestCode == projectionRequest) {
-            Toast.makeText(this, "Live screen permission was not granted", Toast.LENGTH_LONG).show()
-        } else if (resultCode == Activity.RESULT_OK && data?.data != null && requestCode == exportRequest) {
+        if (requestCode == projectionRequest) {
+            if (resultCode == RESULT_OK && data != null) {
+                startForegroundService(Intent(this, LiveVisionService::class.java)
+                    .putExtra(LiveVisionService.EXTRA_CODE, resultCode)
+                    .putExtra(LiveVisionService.EXTRA_DATA, data))
+            } else Toast.makeText(this, "Live perception permission not granted", Toast.LENGTH_LONG).show()
+            return
+        }
+        val uri = data?.data ?: return
+        if (resultCode != RESULT_OK) return
+        if (requestCode == exportRequest) {
             try {
-                val bytes = GameDataVault.export(this)
-                contentResolver.openOutputStream(data.data!!, "w")?.use { it.write(bytes) }
-                    ?: error("Cannot write selected file")
-                Toast.makeText(this, "Exported ${bytes.size} bytes", Toast.LENGTH_LONG).show()
-            } catch (error: Exception) {
-                Toast.makeText(this, "Export failed: ${error.message}", Toast.LENGTH_LONG).show()
+                val payload = GameDataVault.export(this)
+                contentResolver.openOutputStream(uri, "w")?.use { it.write(payload) }
+                    ?: error("Cannot write backup")
+                Toast.makeText(this, "Learning backup exported", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(this, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
             }
-        } else if (resultCode == Activity.RESULT_OK && data?.data != null && requestCode == importRequest) {
-            val uri = data.data!!
-            AlertDialog.Builder(this)
-                .setTitle("Restore profiles and learned game data?")
-                .setMessage("This replaces existing profiles, objective history and learned trajectories.")
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Restore") { _, _ ->
+        } else if (requestCode == importRequest) {
+            AlertDialog.Builder(this).setTitle("Restore learning data?")
+                .setMessage("This replaces the Pilot profiles, learning history and goal records.")
+                .setNegativeButton("Cancel", null).setPositiveButton("Restore") { _, _ ->
                     try {
-                        val bytes = contentResolver.openInputStream(uri)?.use { input ->
-                            val buffer = ByteArrayOutputStream()
+                        val buffer = ByteArrayOutputStream()
+                        contentResolver.openInputStream(uri)?.use { input ->
                             val chunk = ByteArray(32768)
-                            var total = 0
                             while (true) {
-                                val length = input.read(chunk)
-                                if (length < 0) break
-                                total += length
-                                require(total <= 24 * 1024 * 1024) { "Backup exceeds 24 MB" }
-                                buffer.write(chunk, 0, length)
+                                val n = input.read(chunk)
+                                if (n < 0) break
+                                require(buffer.size() + n <= 24 * 1024 * 1024) { "File too large" }
+                                buffer.write(chunk, 0, n)
                             }
-                            buffer.toByteArray()
                         } ?: error("Cannot read backup")
-                        GameDataVault.restore(this, bytes)
+                        GameDataVault.restore(this, buffer.toByteArray())
                         render()
-                        Toast.makeText(this, "Game learning restored", Toast.LENGTH_LONG).show()
-                    } catch (error: Exception) {
-                        Toast.makeText(this, "Restore failed: ${error.message}", Toast.LENGTH_LONG).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(this, "Restore failed: ${e.message}", Toast.LENGTH_LONG).show()
                     }
                 }.show()
+        }
+    }
+    override fun onBackPressed() {
+        when {
+            tab == Tab.GAMES && selectedGameId != null -> { selectedGameId = null; render() }
+            tab != Tab.GAMES -> { tab = Tab.GAMES; render() }
+            else -> super.onBackPressed()
         }
     }
 }

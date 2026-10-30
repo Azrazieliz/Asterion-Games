@@ -10,6 +10,9 @@
         <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent>
     </queries>
     <application android:allowBackup="false" android:label="@string/app_name" android:theme="@android:style/Theme.Material.NoActionBar" android:usesCleartextTraffic="false">
+        <activity android:name=".AdvancedSettingsActivity" android:exported="false"/>
+        <activity android:name="net.gamecodex.app.MainActivity" android:exported="false"
+                  android:screenOrientation="unspecified"/>
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity>

@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">Asterion Pilot</string>
+    <string name="app_name">Asterion</string>
     <string name="accessibility_description">Observe the active game interface and dispatch direct on-screen gestures for the game automation selected by the user.</string>
 </resources>
