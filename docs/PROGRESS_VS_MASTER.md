@@ -115,3 +115,7 @@ Per owner's explicit clarification, "Pause" is **not** a synonym for turning all
 - **Turn off** is a stronger explicit command: cancel alarms, pending tasks, active controls and live perception; persists until turned back on.
 - Header offers two clearly distinct controls when running (Pause and Turn off), Resume and Turn off when paused, and Turn on when off. A two-row compact Accounts / Automation / News / Codex navigation prevents clipped labels in split-screen.
 - These changes are **committed but require compilation and on-device QA**. A running screen-capture test and interrupted-combat recovery are not yet verified.
+
+## 2026-10-30 — Accepted UI/news improvements and discovered X source list
+
+User explicitly accepts notification controls, per-game accounts, evidence-based meta, unified game news, automation status dashboard, and robust backups/reason ledger. User's private X "Games" list was located via authorized ADB; the list has 54 members, 41 unique public handles were visually readable, and 18 matching game source categories were seeded as PUBLIC candidate handles only (private membership dump not committed). Public publisher mappings are not equivalent to ongoing private X-list access. Source of truth and status are in `docs/ACCEPTED_FEATURES_AND_X_SOURCE_PLAN.md`. New features suggested there remain unapproved proposals; no frozen document changed.
