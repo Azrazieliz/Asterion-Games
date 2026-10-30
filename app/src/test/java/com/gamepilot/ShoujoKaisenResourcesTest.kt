@@ -50,6 +50,15 @@ class ShoujoKaisenResourcesTest {
         assertEquals(ShoujoKaisenResources.DispatchAction.FREE_REFRESH,
             p.dispatchStep(unknown.copy(observedFreeRefreshLimit=2)).action)
     }
+    @Test fun genericAgentCannotResetOrAutoDispatchBeforeRewardClassification() {
+        val labels = listOf("Dispatch Level: 9", "Quick Dispatch", "1 time(s) FREE")
+        assertTrue(p.needsStructuredResourceDecision(26, labels))
+        assertFalse(p.safeUnplannedTarget("Quick Dispatch"))
+        assertFalse(p.safeUnplannedTarget("Refresh"))
+        assertTrue(p.safeUnplannedTarget("Claim All"))
+        assertFalse(p.needsStructuredResourceDecision(6, labels))
+        assertTrue(p.needsStructuredResourceDecision(22, listOf("武将派遣")))
+    }
     @Test fun neverSpendGoldShardsOrKarmaStonesInRoutine() {
         for (currency in listOf(ShoujoKaisenResources.Currency.RED_STONE_SHARDS,ShoujoKaisenResources.Currency.BLUE_STONE_SHARDS,
             ShoujoKaisenResources.Currency.KARMA_STONES,ShoujoKaisenResources.Currency.GOLD)) {

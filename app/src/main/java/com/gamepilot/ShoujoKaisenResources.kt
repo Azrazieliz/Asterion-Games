@@ -176,4 +176,47 @@ object ShoujoKaisenResources {
     }
     /** Hero grading needs codex-derived rules; no generic autonomous grader. */
     fun heroGradingAllowed(codexRulesVerified: Boolean): Boolean = codexRulesVerified
+
+    /**
+     * A generic OCR button-clicker has no authority to select dispatch locks,
+     * rerolls, unit assignments or extractor quantities without a structured
+     * live-state decision. This is a targeted safety gate, not a finished planner.
+     */
+    fun needsStructuredResourceDecision(gameId: Int, labels: Collection<String>): Boolean {
+        if (account(gameId) == null) return false
+        val value = labels.joinToString(" ").lowercase()
+        return listOf(
+            "dispatch level", "quick dispatch", "dispatch missions",
+            "quick refresh", "world extractor", "provisions transport",
+            "dragon store", "starwish store", "武将派遣", "派遣任務",
+            "おまかせ派遣", "資源輸送", "抽出", "鉱山", "ショップ"
+        ).any { value.contains(it) }
+    }
+
+    fun safeUnplannedTarget(label: String): Boolean {
+        val text = label.lowercase().trim()
+        return text == "claim all" || text == "受取" || text == "一括受取"
+    }
+
+    fun overview(gameId: Int): String {
+        val region = account(gameId) ?: return "Not a Shoujo Kaisen profile"
+        val free = if (region == Account.GLOBAL) "3 global free refreshes"
+            else "JP refresh allowance requires live verification"
+        return """
+            Shoujo Kaisen: ${region.name} (independent account)
+            Dispatch: gold, stars, diamond chest first. Lock valuable missions
+            BEFORE refreshing. $free; at most two conditional 50-gold retries.
+            No paid retry when profit is unverified or denominated in another resource.
+            Other dispatches: Quick Dispatch; collect on next scheduled session.
+            Guild War Provisions: reserve strong UR+ grade +3 or above for fights.
+            Garden / Ponds: use available choices, prioritize higher rarity.
+            World Extractor: maximize (base output × bonus multiplier + additive bonus).
+            Protect gold, red/blue stone shards, and karma stones except approved uses.
+            Farming: story and trials only, and only when resources are low or requested.
+            Daily upgrades: equipment, soul, Over Boost Stone.
+            Hero grading: requires Asterion DB game codex integration.
+            Live UI quantities and item identity must be verified before spending.
+        """.trimIndent()
+    }
+
 }

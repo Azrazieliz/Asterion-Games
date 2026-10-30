@@ -156,6 +156,17 @@ class MainActivity : Activity() {
                     }
                 })
             }
+            if (ShoujoKaisenResources.account(p.id) != null) {
+                row.addView(Button(this).apply {
+                    text = "Shoujo Kaisen — resource allocation rules"
+                    setOnClickListener {
+                        AlertDialog.Builder(this@MainActivity)
+                            .setTitle(p.title + " — resource policy")
+                            .setMessage(ShoujoKaisenResources.overview(p.id))
+                            .setPositiveButton("Close", null).show()
+                    }
+                })
+            }
             row.addView(taskControls)
             row.addView(Button(this).apply {
                 text = "Inspect learned gameplay history"

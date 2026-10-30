@@ -97,6 +97,18 @@ object GamePlaybooks {
             r("Master missions", GoalType.DAILIES,
                 "Master Mission", "マスターミッション", "ミッション")
         ),
+        // JP and global share logical game mechanics, but NOT inventory, accounts,
+        // reset calendars or unverified Japanese UI action semantics.
+        22 to listOf(
+            r("Character dispatch", GoalType.DAILIES,
+                "派遣", "おまかせ派遣", "武将派遣", "受け取り",
+                source = "https://game8.jp/shoujokaisen/418711"),
+            r("Equipment and soul daily upkeep", GoalType.DAILIES,
+                "装備強化", "英魂", "育成",
+                source = "https://game8.jp/shoujokaisen/442834"),
+            r("Story and Trials", GoalType.FARMING,
+                "冒険", "試練", source = "https://game8.jp/shoujokaisen/418235")
+        ),
         // Screen names and activities verified from the 2026-10-30 ADB recording.
         // No taps or completed objectives are invented from the recording.
         26 to listOf(
@@ -105,7 +117,7 @@ object GamePlaybooks {
                 "Monthly Sign-ins", "Rewards"),
             r("Conquest Quick Mode", GoalType.REWARDS,
                 "Conquest", "Quick Mode Report", "Claimed", "Quick"),
-            r("Dispatch missions", GoalType.DAILIES,
+            r("Dispatch missions: lock valuable Gold/Star/Diamond Chest", GoalType.DAILIES,
                 "Dispatch", "Quick Dispatch", "Claim All", "House Repairs",
                 "Courtyard Cleanup", "Forge Weapons"),
             r("Spacetime Arena", GoalType.DAILIES,
@@ -124,8 +136,10 @@ object GamePlaybooks {
                 "Garden", "Successfully Planted", "Plant x1"),
             r("Ponds fishing", GoalType.REWARDS,
                 "Ponds", "Bertha Pond", "Confirm"),
-            r("Conquest battles", GoalType.FARMING,
-                "Conquest", "Challenge", "Victory", "Stage Rewards")
+            r("Story farming (on demand)", GoalType.FARMING,
+                "Story", "Conquest", "Victory", "Stage Rewards"),
+            r("Trials farming (on demand)", GoalType.FARMING,
+                "Trials", "Trial", "Challenge", "Victory")
         )
     )
 

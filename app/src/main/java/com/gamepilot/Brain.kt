@@ -129,6 +129,10 @@ class Brain(private val context: Context) {
                 return null
             }
         }
+        val resourceSensitiveScreen =
+            ShoujoKaisenResources.needsStructuredResourceDecision(game.id, frame.textValues())
+        if (resourceSensitiveScreen)
+            Events.record(context, "${game.title}: structured resource state required before dispatch/shop/extractor")
         if (GameKnowledge.screenUnsafe(frame)) {
             Events.record(context, "${game.title}: transaction/destructive dialogue; automation paused")
             return null
@@ -165,6 +169,8 @@ class Brain(private val context: Context) {
                         AttackOnTimeVideoProfile.Scene.HERO_DRAW &&
                     (word.contains("free once") || word.contains("free draw"))
                 if (!verifiedFreeLabel && GameKnowledge.dangerous(word)) return@forEach
+                if (resourceSensitiveScreen &&
+                    !ShoujoKaisenResources.safeUnplannedTarget(word)) return@forEach
                 val strength = hints.maxOfOrNull { cue ->
                     when {
                         word == cue -> 3.0
@@ -187,7 +193,8 @@ class Brain(private val context: Context) {
             // Reuse proven scene-specific trajectories, even for icon-only menus.
             // A cached path must have recorded verified evidence, directly or one step ahead.
             val remembered = graph.recommend(game, goal, scene)
-            if (remembered != null && !GameKnowledge.dangerous(remembered.label) &&
+            if (!resourceSensitiveScreen && remembered != null &&
+                !GameKnowledge.dangerous(remembered.label) &&
                 !(game.id == 26 &&
                   AttackOnTimeVideoProfile.identify(frame.textValues()) ==
                       AttackOnTimeVideoProfile.Scene.HERO_DRAW &&
@@ -207,7 +214,8 @@ class Brain(private val context: Context) {
             // Explicitly configured actions can be learned against the current observed scene.
             // Adaptive replay must not execute unclassified screen-coordinate macros
             // on a screen where free and paid gacha offers coexist.
-            val scriptedCandidates = if (game.id == 26 &&
+            val scriptedCandidates = if (resourceSensitiveScreen) emptyList()
+                else if (game.id == 26 &&
                 AttackOnTimeVideoProfile.identify(frame.textValues()) ==
                     AttackOnTimeVideoProfile.Scene.HERO_DRAW) emptyList()
                 else game.actions.filterIsInstance<GameAction.Tap>()
