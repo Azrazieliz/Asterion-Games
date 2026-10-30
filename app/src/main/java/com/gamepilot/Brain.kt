@@ -110,6 +110,8 @@ class Brain(private val context: Context) {
             lastConfirmedAt = frame.time
             journal.record(game.id, proof.goal.id, "VERIFIED", frame, proof.label,
                 "Two post-action observations match game-result evidence")
+            SessionStatus.set(context,game.id,game.title,
+                SessionStatus.Stage.RUNNING,"Verified ${proof.goal.title}; checking remaining goals")
             Events.record(context, "${game.title}: VERIFIED ${proof.goal.title}")
         } else {
             journal.record(game.id, proof.goal.id, "UNCONFIRMED", frame, proof.label,
@@ -238,6 +240,8 @@ class Brain(private val context: Context) {
         ledger.attempt(game.id, choice.goal)
         journal.record(game.id, choice.goal.id, "DISPATCHED", null, choice.label,
             "Gesture accepted by Android, result not yet observed")
+        SessionStatus.set(context,game.id,game.title,
+            SessionStatus.Stage.RUNNING,choice.label)
         Events.record(context, "${game.title}: ${choice.goal.id}, ${choice.label}; scene actions=$sceneCount")
     }
 

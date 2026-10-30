@@ -385,7 +385,14 @@ class MainActivity : Activity() {
         }
     }
     private fun showAutomation() {
-        area.addView(headline("Automation", "A single master control for all scheduled games"))
+        area.addView(headline("Automation", "Live session, permissions and scheduling"))
+        area.addView(card().apply {
+            addView(label("Current session",17f,ink,true))
+            addView(verticalSpace(9))
+            addView(label(SessionStatus.description(this@MainActivity),14f,muted))
+            addView(verticalSpace(6))
+            addView(label("${ScheduledJobs.pendingCount(this@MainActivity)} pending game(s)",12f,muted))
+        })
         area.addView(card().apply {
             addView(label("Status: " + AutomationControl.mode(this@MainActivity).name, 17f,
                 if (AutomationControl.running(this@MainActivity)) accent else muted, true))

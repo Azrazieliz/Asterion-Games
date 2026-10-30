@@ -80,7 +80,10 @@ class GameAccessibilityService : AccessibilityService() {
     }
     /** Immediately invalidates queued callbacks; keeps active and queued jobs persistent. */
     fun pauseAndRetain() {
-        active?.let { ScheduledJobs.enqueue(this, it) }
+        active?.let {
+            SessionStatus.set(this,it.id,it.title,SessionStatus.Stage.PAUSED)
+            ScheduledJobs.enqueue(this, it)
+        }
         queue.forEach { ScheduledJobs.enqueue(this, it) }
         stopAll(cancelPending = false)
     }
@@ -90,6 +93,8 @@ class GameAccessibilityService : AccessibilityService() {
         ScheduledJobs.recover(this, ignoreCooldown = true).forEach(::enqueue)
     }
     fun stopAll(cancelPending: Boolean = false) {
+        if (cancelPending)
+            SessionStatus.set(this,-1,"",SessionStatus.Stage.IDLE)
         generation++
         main.removeCallbacksAndMessages(null)
         queue.clear()
@@ -135,6 +140,8 @@ class GameAccessibilityService : AccessibilityService() {
                 sync.ownedCount + " character entries)")
         }
         active = p
+        SessionStatus.set(this,p.id,p.title,SessionStatus.Stage.RUNNING,
+            "Launching and reading game")
         sessionStartedAt = System.currentTimeMillis()
         sessionAccount = GameAccounts.current(this, p).playerId ?: "unverified:${p.id}"
         val trackingGoals = GoalSettings.get(this,p.id).filter { it.enabled }
@@ -182,6 +189,10 @@ class GameAccessibilityService : AccessibilityService() {
             Events.record(this, "Session ended ${game.title}. VERIFIED goals only: ${brain.summary(game)}")
             val hasObjectives = GoalSettings.get(this, game.id).any { it.enabled }
             ScheduledJobs.finished(this, game, hasObjectives && brain.complete(game))
+            SessionStatus.set(this,game.id,game.title,
+                if (hasObjectives && brain.complete(game))
+                    SessionStatus.Stage.VERIFIED else SessionStatus.Stage.BLOCKED,
+                if (brain.complete(game)) "Objectives confirmed" else "Unfinished goals remain")
             val tracked = GoalSettings.get(this,game.id).filter { it.enabled }
             val newlyCompleted = tracked.count { goal ->
                 val start = startGoalCounts[goal.id] ?: 0
