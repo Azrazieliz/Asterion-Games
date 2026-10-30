@@ -27,18 +27,32 @@ For ongoing secure access to the **private** list use owner-authorized X OAuth w
 
 Fallback: publisher RSS/official patch-note pages and in-app notifications where X is unavailable; do not falsely label public-web sources as the owner's personal X list. Add rate limits, polling limits, deduplication, provenance and expiry.
 
-## New proposals (not user-approved canonical requirements yet)
+## User correction on previously suggested "ideas" (2026-10-30)
 
-1. **Daily reset/event calendar engine:** different account timezones/server resets, claim deadlines, Mine War and settlement windows; priority interrupts by urgency.
-2. **Resource safeguard and audit:** automatic cost/value calculations, reserved-material ledger, post-spend delta confirmation, reversible action history where game allows.
-3. **Failure and recovery lab:** failed-screen clips/transition graphs stored locally for opt-in diagnosis, state-driven retry and no blind loop.
-4. **Account snapshot diff:** detect newly acquired heroes, unspent energy, expiring materials, shop refreshes and roster changes; update Codex evidence.
-5. **Patch impact engine:** compare current verified mechanics with new official updates and **invalidate stale advice** when balance or reward tables change.
-6. **Cross-game scheduler:** account/game priority from reward expiry, expected duration, battery/thermal availability and competition times.
-7. **Evidence confidence UI:** distinguish known, suggested, unverified and contradicted data with timestamp/source and one-tap correction.
-8. **Safe learn/test mode:** trial runs of game-specific routines on the real device with automatic intervention before irreversible decisions.
-9. **Selective notification digest:** urgent timed competitions and limited-time rewards immediate; ordinary updates in a single daily summary.
-10. **Signed backup + migration:** preserve existing Pilot/old Codex private data, signing identity, migration audit and rollback before replacing any installation.
+**Do not re-propose baseline product requirements as optional innovation.**
+- Cross-game scheduling and resource evaluation are intrinsic mandatory capabilities. They were mislabelled as novel suggestions.
+- Per-account inventory snapshot comparisons are lower-value auxiliary implementation details; do not elevate them as headline features.
+- Patch-aware knowledge revision and autonomous gameplay learning are **the entire purpose of the application**, not optional add-ons.
+- Failed-session diagnosis, state-driven recovery, and avoiding loops are explicitly useful and accepted.
+- Daily/weekly reports of ordinary tasks are not desired. Keep **important game news and genuinely urgent alerts only**; no trivial digests.
+- The user already accepted per-game identity, evidence-based meta, relevant game news, meaningful automation status, backups, and separate Pause/Resume/Off. Branding is deferred.
+
+## Distinct additional proposals (NOT automatically owner-approved requirements)
+
+These go beyond obvious scheduling, farming, resource evaluation, patch handling and general learning.
+
+1. **Replay-based regression laboratory:** retain minimal verified state/action traces for each game version and automatically run code/policy changes against those traces before shipping. Detect navigation regressions and unsafe tap selection from patches without repeatedly opening every game. Offline replay cannot prove live Android gameplay, but can catch known breakages.
+2. **Competition opponent-behavior intelligence:** learn individual rival occupancy/challenge windows, rank movement, visible formation changes, and time-to-settlement. Test alternative recovery/last-minute strategies where allowed; isolate ranked-game behavior from generic farming. For example Shoujo #4 target and Mine War.
+3. **Constrained mechanic experiments:** when the Codex cannot explain a mechanic, formulate a testable hypothesis and propose the lowest-cost reversible in-game action that would discriminate among alternatives. Log observations/contradictions; never spend protected materials or change high-value builds just to learn.
+4. **Strategy tournaments with rollback:** compare alternate approved routines over repeated equivalent conditions using actual measured time, reward totals, resource costs and failure rates. Promote only reproducibly superior strategies, version the winner, and revert automatically if performance degrades.
+5. **Shadow-validation before autonomy:** run passive observation alongside the owner's normal play, produce an action-prediction confidence score, and verify step-by-step decisions before a particular game/routine becomes eligible for autonomous execution. Do not turn shadow mode into a mandatory obstacle once behavior is demonstrably stable.
+6. **Transferable mechanic packages with proof gates:** share learned mechanisms such as dispatch locks, stamina regeneration, timed ranking settlement, and reward-tier collection between *different games or regional versions*, but require UI/rule evidence before reuse; never mix account inventory or assumed timers.
+7. **Precision escalation:** automatically isolate the single ambiguous decision that blocks a routine, with the game-screen evidence and a concise choice for the owner; retain the answer as a versioned game rule instead of asking the same question again. Do not spam or interrupt ordinary play.
+8. **Evidence conflict adjudicator:** when official patch notes, Codex, community sources, and live observations disagree, detect the contradiction and suspend affected recommendations only. Retain reliable unaffected mechanics, produce a targeted experiment, and track when resolution is proven.
+9. **Ad/redirection recovery firewall:** distinguish rewarded ads from store listings, scams/deceptive install UI, loss of foreground game, and unverified purchases; return to the correct game and confirm the reward, without tapping misleading payment/install controls.
+10. **Automated gameplay reproducibility packs:** for each new game, generate a portable versioned package of visual states, interaction rules, reset timing, tested routes, objective proofs and minimal evidence to reproduce successes after a device/model upgrade. This is different from a raw account backup.
+
+**Approval status:** These are proposed ideas only, not a modification to any frozen user-approved architecture/master. Existing core requirements remain mandatory.
 
 ## Current implementation truth
 
