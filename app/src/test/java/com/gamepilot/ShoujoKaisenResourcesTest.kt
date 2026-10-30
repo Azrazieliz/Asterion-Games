@@ -40,6 +40,16 @@ class ShoujoKaisenResourcesTest {
         val s = ShoujoKaisenResources.DispatchState(listOf(ShoujoKaisenResources.DispatchMission("unknown",ShoujoKaisenResources.Reward.UNKNOWN,null,false)),0,0)
         assertEquals(ShoujoKaisenResources.DispatchAction.NEED_REWARD_RECOGNITION,p.dispatchStep(s).action)
     }
+    @Test fun jpRefreshLimitCannotBeGuessedFromGlobal() {
+        val task = ShoujoKaisenResources.DispatchMission(
+            "task",ShoujoKaisenResources.Reward.OTHER,12,false)
+        val unknown = ShoujoKaisenResources.DispatchState(listOf(task),0,0,
+            account=ShoujoKaisenResources.Account.JAPAN)
+        assertEquals(ShoujoKaisenResources.DispatchAction.NEED_REGIONAL_RULES,
+            p.dispatchStep(unknown).action)
+        assertEquals(ShoujoKaisenResources.DispatchAction.FREE_REFRESH,
+            p.dispatchStep(unknown.copy(observedFreeRefreshLimit=2)).action)
+    }
     @Test fun neverSpendGoldShardsOrKarmaStonesInRoutine() {
         for (currency in listOf(ShoujoKaisenResources.Currency.RED_STONE_SHARDS,ShoujoKaisenResources.Currency.BLUE_STONE_SHARDS,
             ShoujoKaisenResources.Currency.KARMA_STONES,ShoujoKaisenResources.Currency.GOLD)) {

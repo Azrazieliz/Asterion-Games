@@ -75,12 +75,15 @@ object ShoujoKaisenResources {
         val missions: List<DispatchMission>,
         val freeRefreshesUsed: Int,
         val paidRefreshesUsed: Int,
-        val paidRefreshGuaranteedGoldReturn: Long? = null
+        val paidRefreshGuaranteedGoldReturn: Long? = null,
+        val account: Account = Account.GLOBAL,
+        /** From the current regional UI, not assumed to equal global allowances. */
+        val observedFreeRefreshLimit: Int? = null
     )
     enum class DispatchAction {
         CLAIM_COMPLETED, LOCK_HIGH_VALUE, FREE_REFRESH,
         PAID_REFRESH, QUICK_DISPATCH, WAIT_UNTIL_NEXT_SCHEDULE,
-        NEED_REWARD_RECOGNITION, NONE
+        NEED_REWARD_RECOGNITION, NEED_REGIONAL_RULES, NONE
     }
     data class DispatchStep(val action: DispatchAction, val missionId: String? = null)
 
@@ -93,7 +96,12 @@ object ShoujoKaisenResources {
      * Paid refresh requires a demonstrated profitable same-currency result, not speculation.
      */
     fun dispatchStep(s: DispatchState): DispatchStep {
-        require(s.freeRefreshesUsed in 0..FREE_DISPATCH_REFRESHES)
+        val freeLimit = when (s.account) {
+            Account.GLOBAL -> s.observedFreeRefreshLimit ?: FREE_DISPATCH_REFRESHES
+            Account.JAPAN -> s.observedFreeRefreshLimit
+                ?: return DispatchStep(DispatchAction.NEED_REGIONAL_RULES)
+        }
+        require(freeLimit >= 0 && s.freeRefreshesUsed in 0..freeLimit)
         require(s.paidRefreshesUsed in 0..OPTIONAL_PAID_REFRESHES)
         if (s.missions.any { it.completed })
             return DispatchStep(DispatchAction.CLAIM_COMPLETED)
@@ -111,7 +119,7 @@ object ShoujoKaisenResources {
         val unlocked = ready.filter { !it.locked }
         if (unlocked.any { it.reward == Reward.UNKNOWN })
             return DispatchStep(DispatchAction.NEED_REWARD_RECOGNITION)
-        if (unlocked.isNotEmpty() && s.freeRefreshesUsed < FREE_DISPATCH_REFRESHES)
+        if (unlocked.isNotEmpty() && s.freeRefreshesUsed < freeLimit)
             return DispatchStep(DispatchAction.FREE_REFRESH)
         if (unlocked.isNotEmpty() &&
             authorizeSpend(Spend(Currency.GOLD, PAID_REFRESH_GOLD,
