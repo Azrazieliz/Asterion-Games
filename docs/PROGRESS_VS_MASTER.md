@@ -132,3 +132,22 @@ Branch: `feature/account-ui-safety-meta-news-20261030`. Working source additions
 6. JUnit tests added for strategy outcome comparisons, failure repetition/expiry, and read-only action selection. GitHub compilation and tests must be checked for this exact commit; on-device behavior is not yet verified.
 
 **Do not claim** UI/notification tests or autonomous game mastery completed without actual ADB/device evidence. The former Codex private data migration remains outstanding. Do not modify either frozen master.
+
+## 2026-10-30 — v0.4.2 exact installed-device verification (ADB)
+
+**Verified installation:** Android package `com.gamepilot`, versionCode **9**, versionName **0.4.2-unified**, after signed `adb install -r` over the previous installed Pilot v0.4.0 (versionCode 7). No uninstall, data clear, or replacement of the standalone Codex was executed.
+
+- **Source build:** Git commit `03ac4416ae207bd064785e3d4ce461f50d940603` on `feature/account-ui-safety-meta-news-20261030`.
+- **Compatible release build:** GitHub Actions run [41106064433](https://github.com/Azrazieliz/Asterion-Pilot/actions/runs/41106064433), succeeded with JUnit and assembleDebug.
+- **Installed-compatible signer SHA-256:** `060d52c4d8333f6b81c7cca6d8414e1a9f8a487ca0fe32fa5bbc2c34987c112a`, checked by CI against the known prior installed Pilot signer.
+- **APK SHA-256:** `beb1e7cb03aba5bba6257c7324f23b9f4883670f93c756ce335fb557fe1117ba`. 145,689,155 bytes.
+- **UI verification:** Accessibility hierarchy shows account-first home, two-row navigation, Pause and Turn off buttons, and Global and JP as **separate entries**. The Automation state UI is responsive and persistent.
+- **Codex verification:** Opening Codex from the unified app stays in **com.gamepilot/net.gamecodex.app.MainActivity** (same installed application), displays original Shoujo Kaisen character portraits and **528 characters**, not a blank mock database.
+- **Pause test:** ADB observed SharedPreferences `mode_v2=PAUSED` after the on-screen Pause action. A later UI inspection observed `OFF` while the phone was concurrently being used by another app; no claim is made about who selected Off. The phone's OFF state is **preserved**, not forcibly changed for tests.
+- **Notification controls:** Implemented and compiled; interactive action-button behavior from notification shade has not been independently validated.
+- **Measured strategy results, safe exploration, repeated-failure holds:** Implemented and JUnit-tested, but real-game execution and effectiveness are **unverified**.
+- **X personalized feed and alerts:** Not connected to the user's private List API; game-specific public source candidates only.
+- **Global/JP personal Codex roster migration and live hero-account grading:** Still incomplete.
+- **26-game autonomy:** Not verified. Compilation, embedded Codex and QA of home screen are not evidence that games can play independently.
+
+**Data continuity:** Existing standalone `net.gamecodex.app` was untouched. The recorded legacy Codex backup remains on authorized PC. Do not delete the old installation or modify either frozen master without owner approval.
