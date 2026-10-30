@@ -17,6 +17,7 @@ import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -30,7 +31,7 @@ import java.io.ByteArrayOutputStream
  * while all Pilot settings and learning data continue in this same package.
  */
 class MainActivity : Activity() {
-    private enum class Tab { GAMES, AUTOMATION, CODEX }
+    private enum class Tab { GAMES, AUTOMATION }
     private val ink = Color.rgb(237, 242, 250)
     private val muted = Color.rgb(151, 164, 183)
     private val dark = Color.rgb(12, 17, 28)
@@ -108,26 +109,42 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(dark)
         }
+        if (Build.VERSION.SDK_INT >= 30) {
+            root.setOnApplyWindowInsetsListener { view, insets ->
+                val bars = insets.getInsets(
+                    WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+                view.setPadding(0, bars.top, 0, bars.bottom)
+                insets
+            }
+        } else root.fitsSystemWindows = true
         root.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(19), dp(16), dp(19), dp(10))
             addView(label("ASTERION", 24f, ink, true))
-            addView(label("Game automation and character intelligence", 12f, muted))
+            addView(label("Games, schedules and character knowledge", 12f, muted))
         })
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(12), dp(4), dp(12), dp(12))
         }
-        listOf(Tab.GAMES to "Games", Tab.AUTOMATION to "Automation", Tab.CODEX to "Game Codex")
-            .forEach { (option, text) ->
-                nav.addView(action(text, tab == option) {
-                    tab = option
+        listOf("Games", "Automation", "Game Codex").forEachIndexed { index, name ->
+            val selected = when (index) {
+                0 -> tab == Tab.GAMES
+                1 -> tab == Tab.AUTOMATION
+                else -> false
+            }
+            nav.addView(action(name, selected) {
+                if (index == 2) {
+                    openCodex()
+                } else {
+                    tab = if (index == 0) Tab.GAMES else Tab.AUTOMATION
                     selectedGameId = null
                     render()
-                }, LinearLayout.LayoutParams(0, dp(48), 1f).apply {
-                    marginStart = dp(4); marginEnd = dp(4)
-                })
-            }
+                }
+            }, LinearLayout.LayoutParams(0, dp(48), 1f).apply {
+                marginStart = dp(4); marginEnd = dp(4)
+            })
+        }
         root.addView(nav)
         val scroll = ScrollView(this).apply {
             isFillViewport = true
@@ -143,7 +160,6 @@ class MainActivity : Activity() {
         when (tab) {
             Tab.GAMES -> showGames()
             Tab.AUTOMATION -> showAutomation()
-            Tab.CODEX -> showCodex()
         }
     }
     private fun showGames() {
@@ -247,8 +263,13 @@ class MainActivity : Activity() {
         }, LinearLayout.LayoutParams(-1, dp(49)))
         if (GameCodexBridge.accountFor(p.id) != null) {
             area.addView(verticalSpace(9))
-            area.addView(action("Open character knowledge") {
-                tab = Tab.CODEX; selectedGameId = null; render()
+            area.addView(action("Open character database") {
+                openCodex()
+            }, LinearLayout.LayoutParams(-1, dp(49)))
+            area.addView(verticalSpace(9))
+            area.addView(action("Character strategy summary") {
+                GameCodexBridge.refresh(this, p.id)
+                dialog("Character strategy", CodexStrategyAdvisor.overview(this, p.id))
             }, LinearLayout.LayoutParams(-1, dp(49)))
         }
     }
@@ -316,38 +337,10 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(-1, dp(48)))
         })
     }
-    private fun showCodex() {
-        area.addView(headline("Game Codex", "Characters, equipment, teams and analysis in this app"))
-        area.addView(card().apply {
-            addView(label("Shoujo Kaisen knowledge", 18f, ink, true))
-            addView(verticalSpace(6))
-            addView(label("Full original character catalogue, artwork, rankings, team builder and equipment systems.",
-                13f, muted))
-            addView(verticalSpace(14))
-            addView(action("Open Game Codex", true) {
-                startActivity(Intent().setClassName(this@MainActivity, "net.gamecodex.app.MainActivity"))
-            }, LinearLayout.LayoutParams(-1, dp(53)))
-        })
-        listOf(26 to "Global account", 22 to "Japanese account").forEach { (gameId, name) ->
-            area.addView(card().apply {
-                addView(label(name, 16f, ink, true))
-                addView(verticalSpace(6))
-                addView(label(GameCodexBridge.status(this@MainActivity, gameId), 13f, muted))
-                addView(verticalSpace(9))
-                addView(action("Refresh character data") {
-                    val result = GameCodexBridge.refresh(this@MainActivity, gameId)
-                    dialog(name, "${result.state}: ${result.ownedCount} owned entries\n${result.note}")
-                    render()
-                }, LinearLayout.LayoutParams(-1, dp(46)))
-                addView(verticalSpace(6))
-                addView(action("Character strategy overview") {
-                    dialog(name, CodexStrategyAdvisor.overview(this@MainActivity, gameId))
-                }, LinearLayout.LayoutParams(-1, dp(46)))
-            })
-        }
-        area.addView(label("Game Codex data is research evidence, not permission to spend resources or grade heroes.",
-            12f, muted))
+    private fun openCodex() {
+        startActivity(Intent().setClassName(this, "net.gamecodex.app.MainActivity"))
     }
+
     private fun dialog(title: String, message: String) {
         AlertDialog.Builder(this).setTitle(title).setMessage(message)
             .setPositiveButton("Close", null).show()
