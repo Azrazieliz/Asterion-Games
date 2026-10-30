@@ -11,7 +11,7 @@ object DragonMineWars {
     const val OBSERVED_SLOTS=5
     const val OBSERVED_COLLECTION_METER_MIN=300
     enum class Screen { OTHER, MAP, INFO, FORMATION, BATTLE, VICTORY, DEFEAT, HELD_MINES }
-    enum class Resource { RED_SHARDS, GREEN_SHARDS, UNKNOWN }
+    enum class Resource { RED_SHARDS, CYAN_ICON_RESOURCE, UNKNOWN }
     enum class Action { STAY, INSPECT, ATTACK_WITH_VERIFICATION, CONSIDER_REPLACEMENT, REQUIRE_EVIDENCE }
 
     data class Mine(
@@ -119,7 +119,7 @@ object DragonMineWars {
     fun overview():String="""
         Dragon Mine Wars/Draconic Mirage (Global).
         Recorded five active mine positions and collection progress 05:00:00.
-        Rewards are RED shards/min or GREEN shards/min, kept as separate units.
+        Rewards are RED shards/min or cyan-icon resources/min, kept as separate units.
         A mine panel offers 50% plunder from accumulated resources.
         Mine-specific named heroes grant +20% stackable attack buffs.
         A six-unit offense screen and requirement icons were observed.
@@ -127,7 +127,7 @@ object DragonMineWars {
         from the current UI; do not invent timers or resource conversions.
         Battle reports and Victory must confirm occupation before claiming
         the mine was gained. Existing teams may be garrisoned elsewhere.
-        At the end of the recording: 5 mines; +941 red/min and +2159 green/min.
+        At the end of the recording: 5 mines; +941 red/min and +2159 cyan/min.
         The displayed efficiency is an observed snapshot, not a fixed target.
     """.trimIndent()
 }

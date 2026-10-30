@@ -14,10 +14,10 @@ class DragonMineWarsTest {
     }
     @Test fun doNotConvertBetweenShardCurrencies() {
         val red=mine("red",DragonMineWars.Resource.RED_SHARDS,216)
-        val green=mine("green",DragonMineWars.Resource.GREEN_SHARDS,482)
-        val rank=DragonMineWars.bestByResource(listOf(red,green),300)
+        val cyan=mine("cyan",DragonMineWars.Resource.CYAN_ICON_RESOURCE,482)
+        val rank=DragonMineWars.bestByResource(listOf(red,cyan),300)
         assertEquals("red",rank[DragonMineWars.Resource.RED_SHARDS]?.id)
-        assertEquals("green",rank[DragonMineWars.Resource.GREEN_SHARDS]?.id)
+        assertEquals("cyan",rank[DragonMineWars.Resource.CYAN_ICON_RESOURCE]?.id)
         assertEquals(64800L,DragonMineWars.yield(red,300))
         assertEquals(20,DragonMineWars.buffPercent(1))
         assertNull(DragonMineWars.buffPercent(7))
@@ -41,7 +41,7 @@ class DragonMineWarsTest {
             DragonMineWars.decide(state,new.copy(ratePerMinute=290),new.reward,300).action)
     }
     @Test fun collectionWindowIsBoundedByVisibleMeter() {
-        val m=mine("a",DragonMineWars.Resource.GREEN_SHARDS,10)
+        val m=mine("a",DragonMineWars.Resource.CYAN_ICON_RESOURCE,10)
             .copy(collectionElapsedMin=200,collectionLimitMin=300)
         assertEquals(1000L,DragonMineWars.yield(m,500))
     }
