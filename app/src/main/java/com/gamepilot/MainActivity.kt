@@ -139,6 +139,22 @@ class MainActivity : Activity() {
                         .setPositiveButton("Close", null).show()
                 }
             })
+            if (p.id == AttackOnTimeVideoProfile.GAME_ID) {
+                row.addView(Button(this).apply {
+                    text = "Training: 15-minute Attack on Time recording"
+                    setOnClickListener {
+                        val timeline = AttackOnTimeVideoProfile.observations.joinToString("\\n\\n") { item ->
+                            val from = "%02d:%02d".format(item.startSecond / 60, item.startSecond % 60)
+                            val until = "%02d:%02d".format(item.endSecond / 60, item.endSecond % 60)
+                            "$from–$until  ${item.scene.name.replace('_', ' ')}\\n${item.evidence}"
+                        }
+                        AlertDialog.Builder(this@MainActivity)
+                            .setTitle("Attack on Time — video demonstration")
+                            .setMessage("Observed screens, not automatically completed tasks.\\n\\n" + timeline)
+                            .setPositiveButton("Close", null).show()
+                    }
+                })
+            }
             row.addView(taskControls)
             row.addView(Button(this).apply {
                 text = "Inspect learned gameplay history"
