@@ -96,3 +96,13 @@ With the original debuggable Codex installation intact, ADB `run-as net.gamecode
 ## Reporting rule
 
 Do not claim “apps fused and working on-device” merely because both compile. Explicitly distinguish **committed, CI-passed, installed, inter-app tested, gameplay verified**.
+
+## 2026-10-30 — User-requested single-app account UX and safety revision
+
+- Development branch: `feature/account-ui-safety-meta-news-20261030`; fused Codex source pinned to `94cdd3d7` on its independent repository branch.
+- Durable global automation master switch implemented and surfaced prominently at top; disables schedules, pending jobs, active controller and live perception. Requires Android device validation, including reboot test.
+- Account-centric Games screen and separate Shoujo Kaisen Global / JP panels. Auto-identification uses two identical recognized player IDs from consecutive live observations, no passwords/session tokens and no cross-account merging. Unverified account association is correctly marked not linked.
+- Per-account Codex opening uses regional context. Personal imported Codex roster migration is still incomplete.
+- Invalid/unsourced meta rankings no longer displayed as factual rankings in Codex. Evidence ledger stores verified account-specific team outcomes, minimum 12 records before giving an estimate, and no invented character-strength attributions.
+- Game news section created with real X navigation, but personalized X feed and notifications are **not connected**. Official OAuth app credentials and account authorization are required; no fake connection claimed.
+- User has deferred branding to a later stage. This is structural UX functionality, not approved final visual branding.

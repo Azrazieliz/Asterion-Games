@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: Azrazieliz/Game-Central-Database
-          ref: 63d53d0d8e143a053e82a7fe62a135602c700941
+          ref: 94cdd3d722ffc06143a313b8490e1c07ab90aacb
           path: codex-source
       - uses: actions/setup-java@v4
         with:
