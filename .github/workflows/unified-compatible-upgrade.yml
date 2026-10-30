@@ -17,11 +17,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: feature/unified-pilot-codex-20261030
+          ref: feature/account-ui-safety-meta-news-20261030
       - uses: actions/checkout@v4
         with:
           repository: Azrazieliz/Game-Central-Database
-          ref: 63d53d0d8e143a053e82a7fe62a135602c700941
+          ref: 94cdd3d722ffc06143a313b8490e1c07ab90aacb
           path: codex-source
       - uses: actions/setup-java@v4
         with:
@@ -110,7 +110,7 @@ jobs:
       - name: Publish complete unified app
         uses: actions/upload-artifact@v4
         with:
-          name: Asterion-Unified-Compatible-Upgrade
+          name: Asterion-Unified-AccountUI-Compatible-Upgrade
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/debug/SIGNING_CERTIFICATE.txt
