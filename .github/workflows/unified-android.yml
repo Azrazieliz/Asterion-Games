@@ -121,7 +121,8 @@ jobs:
               /tmp/asterion-release/APK_SHA256.txt \
               --target "$GITHUB_SHA" \
               --title 'Asterion v0.4.4 — Pilot + Codex' \
-              --notes 'Signed unified Android APK, built from the tested source. No uninstall or clear-data required when installer signature matches. Mine Wars rules are not yet autonomous.' 
+              --notes 'Signed unified Android APK, built from the tested source. No uninstall or clear-data required when installer signature matches. Mine Wars rules are not yet autonomous.'
+          fi
       - name: Publish complete unified app
         uses: actions/upload-artifact@v4
         with:
