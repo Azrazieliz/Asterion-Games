@@ -101,7 +101,7 @@ class Brain(private val context: Context) {
         if (game.id != proof.gameId) { pending = null; return false }
         if (frame.time <= proof.observedTime) return true
         val values = frame.textValues()
-        val stillPresent = values.any { GameKnowledge.explicitSuccess(proof.goal, it) }
+        val stillPresent = values.any { GameKnowledge.explicitSuccess(game.id, proof.goal, it) }
         if (stillPresent && frame.time - proof.observedTime < 10_000L) {
             ledger.verify(game.id, proof.goal, proof.label)
             FailureRecoveryLab.clear(context,game.id)
@@ -287,7 +287,7 @@ class Brain(private val context: Context) {
             if (changed) "Live state changed, not verified completion"
             else "No meaningful state change")
         val evidence = currentText.firstOrNull { label ->
-            label !in previousText && GameKnowledge.explicitSuccess(choice.goal, label)
+            label !in previousText && GameKnowledge.explicitSuccess(game.id, choice.goal, label)
         }
         if (evidence != null) {
             pending = PendingProof(game.id, choice.goal, choice.key, evidence, after.time)

@@ -24,6 +24,23 @@ class GameKnowledgeTest {
         assertTrue(GameKnowledge.explicitSuccess(GameGoal(GoalType.FARMING), "胜利"))
         assertTrue(GameKnowledge.explicitSuccess(GameGoal(GoalType.DAILIES), "All daily tasks completed"))
     }
+    @Test fun doNotConfuseUnclaimedOrNegatedResultsWithSuccess() {
+        val reward = GameGoal(GoalType.REWARDS)
+        assertFalse(GameKnowledge.explicitSuccess(reward, "Unclaimed"))
+        assertFalse(GameKnowledge.explicitSuccess(reward, "Not received"))
+        assertFalse(GameKnowledge.explicitSuccess(reward, "Not all rewards claimed"))
+        assertFalse(GameKnowledge.explicitSuccess(reward, "未领取"))
+        assertTrue(GameKnowledge.explicitSuccess(reward, "Rewards claimed"))
+    }
+    @Test fun shoujoRewardGoalRequiresAllTiersNotOneClaim() {
+        val reward = GameGoal(GoalType.REWARDS)
+        assertFalse(GameKnowledge.explicitSuccess(26, reward, "Rewards claimed"))
+        assertFalse(GameKnowledge.explicitSuccess(22, reward, "Reward received"))
+        assertTrue(GameKnowledge.explicitSuccess(26, reward, "All daily reward tiers claimed"))
+        assertTrue(GameKnowledge.explicitSuccess(22, reward, "All daily rewards claimed"))
+        // Another game's one-reward objective retains its existing semantics.
+        assertTrue(GameKnowledge.explicitSuccess(6, reward, "Rewards claimed"))
+    }
     @Test fun avoidDangerousControls() {
         assertTrue(GameKnowledge.dangerous("Purchase"))
         assertTrue(GameKnowledge.dangerous("充值"))
