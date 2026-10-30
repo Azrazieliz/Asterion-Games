@@ -156,6 +156,23 @@ class MainActivity : Activity() {
                     }
                 })
             }
+            if (GameCodexBridge.accountFor(p.id) != null) {
+                row.addView(Button(this).apply {
+                    text = "Sync Game Codex • " + GameCodexBridge.accountFor(p.id)
+                    setOnClickListener {
+                        val result = GameCodexBridge.refresh(this@MainActivity, p.id)
+                        AlertDialog.Builder(this@MainActivity)
+                            .setTitle("Codex integration — " + result.state.name)
+                            .setMessage(
+                                "Account: " + result.account + "\\n" +
+                                "Known owned characters: " + result.ownedCount + "\\n" +
+                                "Details: " + result.note + "\\n\\n" +
+                                GameCodexBridge.status(this@MainActivity, p.id)
+                            )
+                            .setPositiveButton("Close", null).show()
+                    }
+                })
+            }
             if (ShoujoKaisenResources.account(p.id) != null) {
                 row.addView(Button(this).apply {
                     text = "Shoujo Kaisen — resource allocation rules"

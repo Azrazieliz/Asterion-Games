@@ -95,6 +95,11 @@ class GameAccessibilityService : AccessibilityService() {
             startNext()
             return
         }
+        if (GameCodexBridge.accountFor(p.id) != null) {
+            val sync = GameCodexBridge.refresh(this, p.id)
+            Events.record(this, "${p.title}: codex " + sync.state.name + " (" +
+                sync.ownedCount + " character entries)")
+        }
         active = p
         actionCount = 0
         lastAction = null
