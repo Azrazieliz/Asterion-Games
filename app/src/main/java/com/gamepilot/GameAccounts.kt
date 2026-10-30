@@ -42,9 +42,17 @@ object GameAccounts {
         // Labels and values may be adjacent separate OCR/accessibility nodes.
         val visible = frame.texts.map { it.label.trim() }.filter { it.isNotEmpty() }
         val joined = visible.joinToString(" ")
+        val profileLike = visible.any {
+            it.contains("profile",true) || it.contains("my account",true) ||
+            it.contains("プロフィール") || it.contains("个人信息")
+        }
+        val plainId = if(profileLike)
+            Regex("(?i)(?:^|\\s)id\\s*[:：#]\\s*([A-Za-z0-9_-]{5,32})")
+                .find(joined)?.groupValues?.getOrNull(1)
+            else null
         val detected = (
             visible.mapNotNull { pattern.find(it)?.groupValues?.getOrNull(1) } +
-            listOfNotNull(pattern.find(joined)?.groupValues?.getOrNull(1))
+            listOfNotNull(pattern.find(joined)?.groupValues?.getOrNull(1), plainId)
         ).distinct()
         if (detected.size != 1) return
         val uid = detected.single()

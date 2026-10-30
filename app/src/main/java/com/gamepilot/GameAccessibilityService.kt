@@ -63,7 +63,9 @@ class GameAccessibilityService : AccessibilityService() {
                 accountLastScanAt = now
                 val candidates = Profiles.all(this).filter { it.packageName == pkg }
                 if (candidates.size == 1) {
-                    val frame = UiTreePerception.snapshot(rootInActiveWindow, resources.displayMetrics)
+                    val live = VisionBus.latest
+                    val frame = if (live != null && now - live.time <= 2500L) live
+                        else UiTreePerception.snapshot(rootInActiveWindow, resources.displayMetrics)
                     if (frame != null) GameAccounts.observe(this, candidates.single(), frame)
                 }
             }
