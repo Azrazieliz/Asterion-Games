@@ -185,3 +185,18 @@ Owner supplied the exact original filename `Screen_Recording_20261030_195058_Att
 - Release target v0.4.4, Android versionCode 11. CI/unit tests and compatible-signature build to verify at this commit.
 
 Existing two frozen architecture/decisions files unchanged; all old account inventory and installations preserved.
+
+
+## 2026-10-30 — v0.4.4 signed distribution, non-destructive device installation
+
+- **Source:** `2d57dffdf800f57df9284e4b6640d978ac0c2eaf`; unified build `41125547138` **PASS**, including full Codex pack, JUnit, Android compilation and installed-signature gate.
+- **Release:** [v0.4.4-unified](https://github.com/Azrazieliz/Asterion-Pilot/releases/tag/v0.4.4-unified), with direct install APK, SHA-256 checksum and certificate report. APK size **145,738,331 bytes**, checksum `daae74123a1eb03c89bf5fe23c00f7159ec4477b4eb9763001fbb733cf2f48e7`.
+- **Signer continuity:** CI build from a wrong branch-scoped cache produced certificate `d1b01cca...` and was correctly **rejected before release**. After selecting the previously validated `asterion-pilot-ci-debug-signing-v2` cache, CI verified **SHA-256 `060d52c4d8333f6b81c7cca6d8414e1a9f8a487ca0fe32fa5bbc2c34987c112a`**, matching the installed Pilot certificate. Never loosen this check.
+- **Backup before upgrade:** authorized workstation private file `D:\\AsterionPilotAnalysis\\pilot-before-v044-20261030.tar`, **127,653,888 bytes**, **1,295 entries**, tar listing exit 0, SHA-256 `228c8edd0383c796a1cdb3fc0b65741f8922c8f32a986175323432778f46aaed`; archive has not undergone a full restore test. No private data uploaded.
+- **ADB installation:** APK downloaded directly from GitHub release, local SHA-256 matched, `adb install -r` accepted it without uninstall or clearing data. Android package query confirms `com.gamepilot`, `versionCode=11`, `versionName=0.4.4-unified`.
+- **Post-upgrade state:** automation preference `master_enabled=false` / `mode_v2=OFF` preserved, and no gameplay action dispatched. The older separate Codex app remains untouched.
+- **UI smoke test:** updated MainActivity launched; Android UI hierarchy confirmed **Games / Activity / News** and account Global label. This does not verify embedded Codex, UID recognition, game-news delivery, or unattended farming in this exact build. The phone was restored to ChatGPT foreground.
+- **Current blocker:** `com.gamepilot` is **not in Android's enabled Accessibility services list**, and screen projection is not currently active. Actual autonomous gameplay is not proven and requires a legitimate device-consented access path, followed by real-game state/action/outcome testing. Do not bypass OS consent.
+- **Separate unshipped correctness work:** `feature/shoujo-verified-reward-proof-20261030` rejects negated OCR claim messages and requires proof of all tiers before marking Global/JP Shoujo reward objective complete. Not merged, built or installed yet.
+
+The frozen purpose/architecture and decisions masters remain unchanged.
