@@ -1,4 +1,5 @@
 name: Unified Asterion Compatible Upgrade
+# Builds the latest approved unified UI revision under the existing device signer.
 
 on:
   push:
