@@ -15,6 +15,23 @@
 | Frozen master baseline | Asterion-Pilot | `main` + `canon/frozen-decisions-20261030` | Git blob `7ef195e4f8cf052ed5fc848d3b5604ca6758f46f` |
 | Original primary architecture | Asterion-Pilot | `canon/frozen-purpose-architecture-20261029` | Git blob `980da9decedec45e004a896ecb476c78d2bdcfaf` |
 
+## Unified single-APK implementation — 2026-10-30
+
+The owner has explicitly instructed that Pilot and Game Codex become **one app**, with a straightforward interface. This supersedes the earlier two-app runtime/IPC plan. The frozen master files themselves remain unchanged pending an explicit exact amendment.
+
+- **Source branch:** `feature/unified-pilot-codex-20261030` (Pilot repo).
+- **One installed package:** `com.gamepilot`, version `0.4.0-unified`, UI label **Asterion**.
+- **Main screen:** three clear sections: Games, Automation and Game Codex; individual game details and advanced settings on demand rather than dozens of buttons shown simultaneously.
+- **Full Codex:** original Java/WebView engine included inside the Pilot APK with the original validated 528-character, 102-subsystem, 1,170-artwork asset pack restored from the Codex app-pack artifact. This is not a remote web page or an empty placeholder.
+- **Shared local data:** Codex publishes account-scoped snapshots into its **same app sandbox**; Pilot reads these directly. External IPC provider is no longer needed for the unified installation.
+- **Unit and APK CI:** build `41095443257` succeeded after Kotlin fixes, full pack restored; compatible signer build `41096017884` succeeded.
+- **Installed certificate match:** signed upgrade SHA-256 `060d52c4d8333f6b81c7cca6d8414e1a9f8a487ca0fe32fa5bbc2c34987c112a`, identical to the installed Pilot v0.3.3 certificate verified by ADB and apksigner.
+- **Pre-upgrade Pilot backup:** `D:\AsterionPilotAnalysis\pilot-before-unified-20261030.tar`, 12,896 bytes, SHA-256 `688fa27ac27ebed072f0b78ba79da8711171d2ae65373ac3abb7dfb1d98b61c6`.
+- **Original Game Codex:** separate previously installed `net.gamecodex.app` left untouched. Its data backup still exists; automatic migration of its WebView account ownership to the unified sandbox has **not** been demonstrated.
+- **On-device acceptance:** APK compilation and signature verified, but final UI tap-through, Codex content rendering, migrated personal roster and background automation have not yet been validated at the time of this entry.
+- **Master integrity:** no frozen owner-authority file edited.
+- **Remaining acceptance:** device screenshot/layout test, real Codex catalogue opening, account-data migration if any exists, complete mastery and unattended game testing.
+
 ## Feature completion against approved architecture
 
 | Area | Code | CI | Real Android device | Remaining |
