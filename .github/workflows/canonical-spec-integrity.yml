@@ -6,7 +6,7 @@ name: Frozen Canonical Specification Integrity
 # under a branch protection rule or repository ruleset.
 on:
   push:
-    branches: [main, 'canon/**']
+    branches: [main, 'canon/**', feature/pilot-codex-bridge-20261030]
   pull_request:
     branches: [main]
   workflow_dispatch:

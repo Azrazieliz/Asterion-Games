@@ -1,44 +1,64 @@
 # Asterion Pilot × Game Codex — Progress Versus Frozen Master
 
-**Mutable evidence ledger**, current snapshot **2026-10-30**. This file is intended to be **updated on every substantial development batch** without rewriting either frozen master. All status claims require a commit, build, test, device observation or source evidence.
+**Current verified snapshot:** 2026-10-30. **This is an updatable evidence ledger**, not permission to modify frozen masters.
 
-**Immutable authorities:** `CANONICAL_PURPOSE_AND_ARCHITECTURE_LOCKED.md`; `MASTER_DECISIONS_FROZEN_20261030.md`. Never edit them without user authorization for the exact diff.
+**FROZEN / UNMODIFIABLE WITHOUT EXACT USER AUTHORIZATION:**
+- [Canonical purpose/architecture](CANONICAL_PURPOSE_AND_ARCHITECTURE_LOCKED.md)
+- [Frozen decisions master](MASTER_DECISIONS_FROZEN_20261030.md)
 
-## Current status matrix
+## Repositories / integration branches (do not merge blindly)
 
-| Frozen acceptance criterion | Implemented source | CI verified | Android device verified | Still missing |
+| Component | Repository | Integration branch / source | Last successful validation |
+|---|---|---|---|
+| Pilot Android controller | Azrazieliz/Asterion-Pilot | `feature/pilot-codex-bridge-20261030` | GitHub Actions run `41086707153` — **PASS**; later commits must be retested |
+| Game Codex Android data source | Azrazieliz/Game-Central-Database | `feature/codex-pilot-export-20261030` | GitHub Actions `41087528023` — **PASS**; full 528-character / 102-subsystem package |
+| Frozen master baseline | Asterion-Pilot | `main` + `canon/frozen-decisions-20261030` | Git blob `7ef195e4f8cf052ed5fc848d3b5604ca6758f46f` |
+| Original primary architecture | Asterion-Pilot | `canon/frozen-purpose-architecture-20261029` | Git blob `980da9decedec45e004a896ecb476c78d2bdcfaf` |
+
+## Feature completion against approved architecture
+
+| Area | Code | CI | Real Android device | Remaining |
 |---|---|---|---|---|
-| 26 game profiles / independent context | Yes | Prior builds yes | No | Live gameplay in each |
-| Direct game input | Accessibility taps/swipes | Prior builds yes | Not validated against games | Unattended real-control validation |
-| Live screen perception | In-memory projection, OCR, accessibility tree | Prior builds yes | Not validated against full 26 | Android capture consent and full visual reasoning |
-| Reliable unattended schedule | Alarms, persisted jobs | Prior builds yes | No | Keyguard/background startup constraints |
-| Learn and retain verified play routes | SQLite policy/graph & episode log | Yes for unit scenarios | No | 26 real game traces and tactics |
-| Shoujo daily objectives | Partial task ledger and policy | Yes for decisions | No | Actual UI completeness verification |
-| Global/JP separate game identity | Pilot IDs 26 and 22 | Yes | No | Account-scoped roster and rule verification |
-| Dispatch value optimization | Locks, refresh limits, reward model | Prior tests yes | No | Live icons, ROI forecast, dispatch execution |
-| Resource reserves/shop rules | Pure decision guards | Prior tests yes | No | Live resource-reading and per-item authorization |
-| Game Codex synchronization | Not yet on current main | — | No | Two branch-preserving signed Android integration changes |
-| Game Codex hero grading | Not implemented | — | No | Verified owned roster, mechanics, grading constraints |
-| Competition/game events | Awaiting user evening recording | — | No | Detailed strategy, timing and tests |
-| Consistent update signatures | Debug-key cached in CI | Two CI fingerprints matched | Not validated in-place | Production signing |
-| Frozen master hash enforcement | Original canonical CI guard | Passed | Not applicable | Add second master hash guard, GH required status checks |
+| 26 game profiles | Implemented | Previously passed | No gameplay verification | Per-game strategies |
+| In-memory screen perception / direct gestures | Implemented | Previously passed | Unverified inside games | Live scene recognition, Android capture permissions |
+| Session alarms / job recovery | Partial | Previously passed | Unverified unattended | OS background/lock limits |
+| Generic visual policy / experience graph | Partial | Tests passed | No actual 26-game mastery verified | Reliable tactical learning |
+| Shoujo resource preservation and dispatch logic | Decision engine + guards | Tests passed | Live execution unverified | Recognize on-screen icons, mission locking, auto assignment |
+| Conditional 50-gold refresh | Conservative provisional minimum **250 verified gold** (5×; NOT a user-approved exact ratio) | Tests passed | Not used | Actual future output is unknown: do NOT spend until proven |
+| Global / JP separation | Account-specific Pilot IDs and Codex scope keys | VM tests passed | Accounts not populated/verified | Assign real local owned roster safely |
+| Cross-app Codex IPC | ContentProvider `snapshot/global` and `snapshot/jp`; Pilot client | Both Android APK builds + JS tests passed | **Not yet installed as a pair** | Update certificate compatibility, actual provider query |
+| Codex experimental scenario advice | Read-only advisory UI on Pilot integration branch | Pending CI for last addition | No | Real account-owned data/validation, combat optimizer |
+| Hero grading from Codex | Intentionally not authorized | Conservative guard | No | Source proof plus owner reinforcement methodology |
+| Shoujo events/competition | Awaiting owner gameplay | — | — | Time-specific competition tactics |
+| Data retention | Pilot export/import; Codex legacy roster preserved | Tests passed | Device version has live Codex data | Secure in-place update or verified backup+restore |
+| Master integrity | Frozen original + decision master hash | Main CI passed | N/A | Server-enforced required ruleset not available in connection |
 
-## Development history
+## Device inspection through authorized ADB (non-destructive)
 
-- **2026-10-29:** Frozen canonical product purpose and architecture created, archived branch and CI hash check. Android prototype and profiles.
-- **2026-10-30:** Direct-control agent, multi-screen transition learning, job recovery and logging; game-26 15-minute session studied.
-- **2026-10-30:** User-approved rules for Shoujo daily rewards, free-only draws, weekly shop, rank-four PvP, 60-hour AFK ad, dispatch, protected resources, extractor and farming implemented as tests/partial guards.
-- **2026-10-30:** GitHub Codex repository identified: `Azrazieliz/Game-Central-Database`, first adapter Shoujo Kaisen. Integration to be built in two **separate branches**, with neither main replaced.
+Device: Samsung Android 17, ADB `R3GYC0LSC7K`, connected via authorized remote workstation.
 
-## Verified vs incomplete
+- Installed Game Codex: `net.gamecodex.app`, version **1.0.0**, versionCode **100**, debug-build debuggable, unchanged.
+- Installed Shoujo Kaisen Global: `com.onemt.and.shoujokaisen`, version **1.0.144**, unchanged.
+- `com.gamepilot` **not installed** at inspection time. Do not claim end-to-end sync has run.
+- Current Codex certificate SHA-256 `b5390147b2816ef765f8108682426071d26f804d25274aa1d79a0c8cb5f1cdc6`. New Codex bridge certificate comparison not completed at this progress snapshot.
+- The existing Codex private files are visible through `adb run-as`. **No uninstall, reset, or data clearing performed.**
 
-All earlier reported APKs are scaffolding, not autonomous game-mastery verification. The GitHub main version before integration branch is Pilot 0.3.3. The Game Codex Android WebView uses local owned roster state and a source-independent experimental ranking engine; the two apps do not yet have an installed live communications bridge.
+## Recent implementation commits
 
-**Next tests:** two-repository bridge schema compatibility, CI compile on both branches, live package presence by ADB, manual-independent Android provider query once the updated Codex APK exists, cross-account isolation, and game-26 run result verification. Record actual success/failure here rather than declaring completion when code alone exists.
+- Pilot `main`: `f007a1c19b72` creates frozen decisions + live progress ledger; `d87642885de9` adds second hash integrity gate.
+- Pilot bridge `7b9cac548f45`: Android read-only Codex client, Global/JP isolated snapshots, policy requiring high-margin dispatch rewards.
+- Game Codex `4f5ab43c21e6`: read-only Android provider, scope-specific local roster publishing, VM isolation tests, and full validated data/art preserving CI package.
+- The original Game Codex `main` is unchanged by integration development.
 
-## Blockers
+## Next dependencies, not completed
 
-- No source-grounded guaranteed return forecast for random paid dispatch refresh. "Way more than 50" has no precise owner-selected multiple; reserve gold until forecast clearly and reliably exceeds the 50-gold cost by a significant margin.
-- No verified complete owned equipment/inventory for hero grading.
-- JP differs from Global in mechanics/refresh limits; preserve separation.
-- Screen automation must not modify or erase an unrelated Android installation.
+1. Build latest Pilot advisory commit, then install Pilot without affecting Codex data or signing.
+2. Compare built Codex signature with installed Codex signature; **do not overwrite** old app with incompatible signer. Preserve full WebView roster if an explicit migration becomes necessary.
+3. Test native provider query between real installed updated APKs and account scope switching.
+4. Use actual game UI readbacks to populate live resource counts, ranks, dispatch returns and Codex roster; do not guess.
+5. Collect competition schedule, guild war and hero reinforcement rules from the owner's recording; test repeatable autonomous in-game tasks.
+6. Validate true zero-touch Android wake/launch/capture integration or report limitations accurately.
+
+## Reporting rule
+
+Do not claim “apps fused and working on-device” merely because both compile. Explicitly distinguish **committed, CI-passed, installed, inter-app tested, gameplay verified**.
