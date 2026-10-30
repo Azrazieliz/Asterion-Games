@@ -80,7 +80,7 @@ class GameAccessibilityService : AccessibilityService() {
     /** No blind continuation from stale coordinates; restart from live screen state. */
     fun recoverPending() {
         if (!AutomationControl.running(this)) return
-        ScheduledJobs.recover(this).forEach(::enqueue)
+        ScheduledJobs.recover(this, ignoreCooldown = true).forEach(::enqueue)
     }
     fun stopAll(cancelPending: Boolean = false) {
         generation++

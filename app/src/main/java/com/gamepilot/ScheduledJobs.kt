@@ -53,14 +53,14 @@ object ScheduledJobs {
         store(context, emptyList())
         prefs(context).edit().clear().apply()
     }
-    @Synchronized fun recover(context: Context): List<GameProfile> {
+    @Synchronized fun recover(context: Context, ignoreCooldown: Boolean = false): List<GameProfile> {
         val profiles = Profiles.all(context)
         val pending = read(context)
         store(context, pending)
         val now = System.currentTimeMillis()
         return pending.mapNotNull { (id, _) ->
             val previous = prefs(context).getLong("lastAttempt_$id", 0L)
-            if (previous > 0 && now - previous < RETRY_COOLDOWN) null
+            if (!ignoreCooldown && previous > 0 && now - previous < RETRY_COOLDOWN) null
             else profiles.find { it.id == id && it.packageName.isNotBlank() }
         }
     }
