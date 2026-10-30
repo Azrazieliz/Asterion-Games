@@ -158,6 +158,15 @@ class MainActivity : Activity() {
             }
             if (GameCodexBridge.accountFor(p.id) != null) {
                 row.addView(Button(this).apply {
+                    text = "Codex experimental strategy shortlist"
+                    setOnClickListener {
+                        AlertDialog.Builder(this@MainActivity)
+                            .setTitle(p.title + " — Codex character research")
+                            .setMessage(CodexStrategyAdvisor.overview(this@MainActivity, p.id))
+                            .setPositiveButton("Close", null).show()
+                    }
+                })
+                row.addView(Button(this).apply {
                     text = "Sync Game Codex • " + GameCodexBridge.accountFor(p.id)
                     setOnClickListener {
                         val result = GameCodexBridge.refresh(this@MainActivity, p.id)
