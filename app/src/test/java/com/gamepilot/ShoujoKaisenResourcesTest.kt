@@ -32,9 +32,11 @@ class ShoujoKaisenResourcesTest {
         assertEquals(ShoujoKaisenResources.DispatchAction.QUICK_DISPATCH,
             p.dispatchStep(s.copy(paidRefreshGuaranteedGoldReturn=50)).action)
         assertEquals(ShoujoKaisenResources.DispatchAction.PAID_REFRESH,
-            p.dispatchStep(s.copy(paidRefreshGuaranteedGoldReturn=51)).action)
+            p.dispatchStep(s.copy(paidRefreshGuaranteedGoldReturn=250)).action)
+        assertEquals(ShoujoKaisenResources.DispatchAction.PAID_REFRESH,
+            p.dispatchStep(s.copy(paidRefreshGuaranteedGoldReturn=249)).action)
         assertEquals(ShoujoKaisenResources.DispatchAction.QUICK_DISPATCH,
-            p.dispatchStep(s.copy(paidRefreshGuaranteedGoldReturn=100,paidRefreshesUsed=2)).action)
+            p.dispatchStep(s.copy(paidRefreshGuaranteedGoldReturn=300,paidRefreshesUsed=2)).action)
     }
     @Test fun unknownRewardRequiresClassificationBeforeReset() {
         val s = ShoujoKaisenResources.DispatchState(listOf(ShoujoKaisenResources.DispatchMission("unknown",ShoujoKaisenResources.Reward.UNKNOWN,null,false)),0,0)
@@ -70,10 +72,10 @@ class ShoujoKaisenResourcesTest {
                 ShoujoKaisenResources.Reason.PROFITABLE_PAID_DISPATCH_REFRESH)))
         assertEquals(ShoujoKaisenResources.Decision.ALLOW,
             p.authorizeSpend(ShoujoKaisenResources.Spend(ShoujoKaisenResources.Currency.GOLD,50,
-                ShoujoKaisenResources.Reason.PROFITABLE_PAID_DISPATCH_REFRESH,200,1)))
+                ShoujoKaisenResources.Reason.PROFITABLE_PAID_DISPATCH_REFRESH,300,1)))
         assertEquals(ShoujoKaisenResources.Decision.DENY,
             p.authorizeSpend(ShoujoKaisenResources.Spend(ShoujoKaisenResources.Currency.GOLD,50,
-                ShoujoKaisenResources.Reason.PROFITABLE_PAID_DISPATCH_REFRESH,200,2)))
+                ShoujoKaisenResources.Reason.PROFITABLE_PAID_DISPATCH_REFRESH,300,2)))
     }
     @Test fun guildWarUsesMidLevelHeroesAndReservesStrongUrPlus() {
         val heroes = listOf(ShoujoKaisenResources.Hero("strong",ShoujoKaisenResources.Rarity.UR_PLUS,3),

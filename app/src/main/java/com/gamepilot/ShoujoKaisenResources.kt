@@ -11,6 +11,12 @@ object ShoujoKaisenResources {
     const val FREE_DISPATCH_REFRESHES = 3
     const val OPTIONAL_PAID_REFRESHES = 2
     const val PAID_REFRESH_GOLD = 50L
+    /**
+     * Provisional conservative operational interpretation of "way more than 50":
+     * at least 5x gross gold (250), never 51. This is NOT the user's chosen exact
+     * multiple. Unknown future reroll rewards NEVER count as guaranteed.
+     */
+    const val PAID_REFRESH_MIN_VERIFIED_GOLD_RETURN = 250L
 
     enum class Account { GLOBAL, JAPAN }
     fun account(gameId: Int): Account? = when (gameId) {
@@ -52,7 +58,7 @@ object ShoujoKaisenResources {
             spend.amount != PAID_REFRESH_GOLD -> Decision.DENY
             spend.alreadyPaidRefreshes >= OPTIONAL_PAID_REFRESHES -> Decision.DENY
             spend.guaranteedGoldReturn == null -> Decision.NEED_EVIDENCE
-            spend.guaranteedGoldReturn > PAID_REFRESH_GOLD -> Decision.ALLOW
+            spend.guaranteedGoldReturn >= PAID_REFRESH_MIN_VERIFIED_GOLD_RETURN -> Decision.ALLOW
             else -> Decision.DENY
         }
         // Non-reserved resources are not blanket-approved: a specific reason is needed.
