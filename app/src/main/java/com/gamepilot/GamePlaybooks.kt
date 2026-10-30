@@ -100,6 +100,7 @@ object GamePlaybooks {
         // Screen names and activities verified from the 2026-10-30 ADB recording.
         // No taps or completed objectives are invented from the recording.
         26 to listOf(
+            r("Free hero draw", GoalType.REWARDS, "Free Once", "Free Draw"),
             r("Monthly Login Rewards", GoalType.REWARDS, "Login Rewards", "Sign In",
                 "Monthly Sign-ins", "Rewards"),
             r("Conquest Quick Mode", GoalType.REWARDS,

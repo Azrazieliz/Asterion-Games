@@ -152,6 +152,14 @@ class Brain(private val context: Context) {
             frame.texts.forEach { seen ->
                 if (seen.bounds.isEmpty || frame.width < 1 || frame.height < 1) return@forEach
                 val word = GameKnowledge.normalize(seen.label)
+                if (game.id == 26 &&
+                    AttackOnTimeVideoProfile.identify(frame.textValues()) ==
+                        AttackOnTimeVideoProfile.Scene.HERO_DRAW) {
+                    // Never select the adjacent paid 10-draw button.
+                    if (goal.type != GoalType.REWARDS ||
+                        !(word.contains("free once") || word.contains("free draw")))
+                        return@forEach
+                }
                 if (GameKnowledge.dangerous(word)) return@forEach
                 val strength = hints.maxOfOrNull { cue ->
                     when {
@@ -175,7 +183,12 @@ class Brain(private val context: Context) {
             // Reuse proven scene-specific trajectories, even for icon-only menus.
             // A cached path must have recorded verified evidence, directly or one step ahead.
             val remembered = graph.recommend(game, goal, scene)
-            if (remembered != null && !GameKnowledge.dangerous(remembered.label)) {
+            if (remembered != null && !GameKnowledge.dangerous(remembered.label) &&
+                !(game.id == 26 &&
+                  AttackOnTimeVideoProfile.identify(frame.textValues()) ==
+                      AttackOnTimeVideoProfile.Scene.HERO_DRAW &&
+                  !remembered.label.contains("free once") &&
+                  !remembered.label.contains("free draw"))) {
                 val attempts = currentAttempts[remembered.actionKey] ?: 0
                 if (attempts < 2) {
                     all.add(Candidate(

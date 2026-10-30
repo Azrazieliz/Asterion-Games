@@ -109,8 +109,12 @@ object AttackOnTimeVideoProfile {
     /** High-risk or irrelevant overlays cannot be treated as daily task targets. */
     fun mustPause(scene: Scene, words: Collection<String>): Boolean {
         if (scene == Scene.ADVERTISEMENT || scene == Scene.SMITHY ||
-            scene == Scene.GUILD_STORE || scene == Scene.TREASURE_ASCEND ||
-            scene == Scene.HERO_DRAW) return true
+            scene == Scene.GUILD_STORE || scene == Scene.TREASURE_ASCEND) return true
+        // This screen may contain paid draws; only the labelled free button is eligible.
+        if (scene == Scene.HERO_DRAW && words.none {
+                val value = GameKnowledge.normalize(it)
+                value.contains("free once") || value.contains("free draw")
+            }) return true
         val labels = words.map(GameKnowledge::normalize)
         return labels.any {
             it.contains("install") || it.contains("real money") ||

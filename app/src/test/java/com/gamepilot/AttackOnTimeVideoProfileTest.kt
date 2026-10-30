@@ -32,6 +32,8 @@ class AttackOnTimeVideoProfileTest {
         assertTrue(p.mustPause(AttackOnTimeVideoProfile.Scene.GUILD_STORE, listOf("Purchase")))
         assertTrue(p.mustPause(AttackOnTimeVideoProfile.Scene.TREASURE_ASCEND, listOf("Ascend")))
         assertTrue(p.mustPause(AttackOnTimeVideoProfile.Scene.HERO_DRAW, listOf("Draw x10")))
+        assertFalse(p.mustPause(AttackOnTimeVideoProfile.Scene.HERO_DRAW,
+            listOf("Free Once", "Draw x10")))
         assertFalse(p.mustPause(AttackOnTimeVideoProfile.Scene.DISPATCH, listOf("Quick Dispatch", "Claim All")))
     }
     @Test fun game26HasSpecificRoutineCues() {
