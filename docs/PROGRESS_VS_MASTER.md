@@ -10,8 +10,8 @@
 
 | Component | Repository | Integration branch / source | Last successful validation |
 |---|---|---|---|
-| Pilot Android controller | Azrazieliz/Asterion-Pilot | `feature/pilot-codex-bridge-20261030` | GitHub Actions run `41086707153` — **PASS**; later commits must be retested |
-| Game Codex Android data source | Azrazieliz/Game-Central-Database | `feature/codex-pilot-export-20261030` | GitHub Actions `41087528023` — **PASS**; full 528-character / 102-subsystem package |
+| Pilot Android controller | Azrazieliz/Asterion-Pilot | `feature/pilot-codex-bridge-20261030` | GitHub Actions run `41088298408` — **PASS** (latest full advisor + UI + frozen-spec checks) |
+| Game Codex Android data source | Azrazieliz/Game-Central-Database | `feature/codex-pilot-export-20261030` | GitHub Actions `41087528023` — **PASS**; complete 528-character / 102-subsystem pack preserved |
 | Frozen master baseline | Asterion-Pilot | `main` + `canon/frozen-decisions-20261030` | Git blob `7ef195e4f8cf052ed5fc848d3b5604ca6758f46f` |
 | Original primary architecture | Asterion-Pilot | `canon/frozen-purpose-architecture-20261029` | Git blob `980da9decedec45e004a896ecb476c78d2bdcfaf` |
 
@@ -26,8 +26,8 @@
 | Shoujo resource preservation and dispatch logic | Decision engine + guards | Tests passed | Live execution unverified | Recognize on-screen icons, mission locking, auto assignment |
 | Conditional 50-gold refresh | Conservative provisional minimum **250 verified gold** (5×; NOT a user-approved exact ratio) | Tests passed | Not used | Actual future output is unknown: do NOT spend until proven |
 | Global / JP separation | Account-specific Pilot IDs and Codex scope keys | VM tests passed | Accounts not populated/verified | Assign real local owned roster safely |
-| Cross-app Codex IPC | ContentProvider `snapshot/global` and `snapshot/jp`; Pilot client | Both Android APK builds + JS tests passed | **Not yet installed as a pair** | Update certificate compatibility, actual provider query |
-| Codex experimental scenario advice | Read-only advisory UI on Pilot integration branch | Pending CI for last addition | No | Real account-owned data/validation, combat optimizer |
+| Cross-app Codex IPC | ContentProvider `snapshot/global` and `snapshot/jp`; Pilot client | Both Android APK builds + JS tests passed | **Pilot installed / Codex bridge not installed** | Codex signer mismatch blocks in-place update; real provider query pending |
+| Codex experimental scenario advice | Read-only advisory UI on Pilot integration branch | GitHub Actions `41088298408` — **PASS** | No | Real account-owned data/validation, combat optimizer |
 | Hero grading from Codex | Intentionally not authorized | Conservative guard | No | Source proof plus owner reinforcement methodology |
 | Shoujo events/competition | Awaiting owner gameplay | — | — | Time-specific competition tactics |
 | Data retention | Pilot export/import; Codex legacy roster preserved | Tests passed | Device version has live Codex data | Secure in-place update or verified backup+restore |
@@ -39,8 +39,8 @@ Device: Samsung Android 17, ADB `R3GYC0LSC7K`, connected via authorized remote w
 
 - Installed Game Codex: `net.gamecodex.app`, version **1.0.0**, versionCode **100**, debug-build debuggable, unchanged.
 - Installed Shoujo Kaisen Global: `com.onemt.and.shoujokaisen`, version **1.0.144**, unchanged.
-- `com.gamepilot` **not installed** at inspection time. Do not claim end-to-end sync has run.
-- Current Codex certificate SHA-256 `b5390147b2816ef765f8108682426071d26f804d25274aa1d79a0c8cb5f1cdc6`. New Codex bridge certificate comparison not completed at this progress snapshot.
+- `com.gamepilot` **installed non-destructively via authorized ADB** from the integration branch; Android reports version 0.3.3 / code 6. Activity launch succeeded. No gameplay or connected provider query validated.
+- Current Codex certificate SHA-256 `b5390147b2816ef765f8108682426071d26f804d25274aa1d79a0c8cb5f1cdc6`. New Codex bridge certificate SHA-256 `b7a52cd78eba70511098848c6fd1c62c3559314a7ce3576511abc81f66d03059`. It **differs from the installed Codex certificate**; in-place APK update is not possible. Existing Codex untouched.
 - The existing Codex private files are visible through `adb run-as`. **No uninstall, reset, or data clearing performed.**
 
 ## Recent implementation commits
@@ -52,7 +52,7 @@ Device: Samsung Android 17, ADB `R3GYC0LSC7K`, connected via authorized remote w
 
 ## Next dependencies, not completed
 
-1. Build latest Pilot advisory commit, then install Pilot without affecting Codex data or signing.
+1. **Done:** Pilot integration branch built and installed. Verify full app controls and permission flow without activating risky autonomous game actions.
 2. Compare built Codex signature with installed Codex signature; **do not overwrite** old app with incompatible signer. Preserve full WebView roster if an explicit migration becomes necessary.
 3. Test native provider query between real installed updated APKs and account scope switching.
 4. Use actual game UI readbacks to populate live resource counts, ranks, dispatch returns and Codex roster; do not guess.
