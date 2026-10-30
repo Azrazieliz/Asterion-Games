@@ -49,9 +49,26 @@ class GameAccessibilityService : AccessibilityService() {
         AutomationNotification.refresh(this)
         if (AutomationControl.running(this)) ScheduledJobs.recover(this).forEach(::enqueue)
     }
+    private var accountLastScanAt = 0L
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        val pkg = event?.packageName?.toString()
+        if (event != null && pkg != null &&
+            (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+             event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) &&
+            pkg != packageName) {
+            val now = System.currentTimeMillis()
+            // Passive identity observation also works during manual gameplay.
+            // It must never click or attempt to run a daily routine.
+            if (now - accountLastScanAt >= 1200L) {
+                accountLastScanAt = now
+                val candidates = Profiles.all(this).filter { it.packageName == pkg }
+                if (candidates.size == 1) {
+                    val frame = UiTreePerception.snapshot(rootInActiveWindow, resources.displayMetrics)
+                    if (frame != null) GameAccounts.observe(this, candidates.single(), frame)
+                }
+            }
+        }
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            val pkg = event.packageName?.toString()
             if (!pkg.isNullOrBlank()) lastWindowPackage = pkg
             val now = System.currentTimeMillis()
             if (AutomationControl.running(this) && now - lastRecoveryTime > 20_000 &&

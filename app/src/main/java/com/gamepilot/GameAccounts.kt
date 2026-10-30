@@ -39,13 +39,17 @@ object GameAccounts {
      */
     @Synchronized fun observe(context: Context, game: GameProfile, frame: LiveFrame) {
         if (game.packageName.isBlank()) return
-        val detected = frame.texts.asSequence().mapNotNull {
-            pattern.find(it.label)?.groupValues?.getOrNull(1)
-        }.distinct().toList()
+        // Labels and values may be adjacent separate OCR/accessibility nodes.
+        val visible = frame.texts.map { it.label.trim() }.filter { it.isNotEmpty() }
+        val joined = visible.joinToString(" ")
+        val detected = (
+            visible.mapNotNull { pattern.find(it)?.groupValues?.getOrNull(1) } +
+            listOfNotNull(pattern.find(joined)?.groupValues?.getOrNull(1))
+        ).distinct()
         if (detected.size != 1) return
         val uid = detected.single()
         val prior = candidates[game.id]
-        if (prior?.first == uid && frame.time > prior.second) {
+        if (prior?.first == uid && frame.time - prior.second >= 900L) {
             val previous = current(context, game)
             if (previous.playerId == uid) return
             val doc = JSONObject().put("package", game.packageName)
@@ -53,6 +57,6 @@ object GameAccounts {
                 .put("region", region(game.id)).put("evidence", "repeated_live_uid")
             if (prefs(context).edit().putString(game.id.toString(), doc.toString()).commit())
                 Events.record(context, "Verified account link for ${game.title}: labeled UID observed twice")
-        } else candidates[game.id] = uid to frame.time
+        } else if (prior?.first != uid || frame.time - prior.second >= 900L) candidates[game.id] = uid to frame.time
     }
 }
