@@ -82,7 +82,7 @@ object ImportantGameNews {
     private fun readFeed(game:GameProfile):List<Story>{
         val q=if(game.id==26) "\"Attack on Time\" game"
             else if(game.id==22) "\"少女廻戦\" game"
-            else "\""+game.title.replace("\"","")+" \" game"
+            else "\""+game.title.replace("\"","")+"\" game"
         val url="https://news.google.com/rss/search?q="+
             URLEncoder.encode(q+" when:7d","UTF-8")+"&hl=en-US&gl=US&ceid=US:en"
         val conn=URL(url).openConnection() as HttpURLConnection

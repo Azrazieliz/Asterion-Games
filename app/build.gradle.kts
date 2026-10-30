@@ -17,8 +17,8 @@ android {
         applicationId = "com.gamepilot"
         minSdk = 29
         targetSdk = 35
-        versionCode = 9
-        versionName = "0.4.2-unified"
+        versionCode = 10
+        versionName = "0.4.3-unified"
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
