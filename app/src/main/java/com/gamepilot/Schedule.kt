@@ -17,7 +17,7 @@ object Scheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         manager.cancel(pending)
-        if (!p.enabled || p.packageName.isBlank()) return
+        if (!AutomationControl.enabled(context) || !p.enabled || p.packageName.isBlank()) return
         val whenMillis = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, p.hour)
             set(Calendar.MINUTE, p.minute)
@@ -36,11 +36,23 @@ object Scheduler {
         }
     }
     fun all(context: Context) = Profiles.all(context).forEach { schedule(context, it) }
+    fun cancelAll(context: Context) {
+        val manager = context.getSystemService(AlarmManager::class.java)
+        Profiles.all(context).forEach { game ->
+            val pending = PendingIntent.getBroadcast(
+                context, game.id,
+                Intent(context, ScheduleReceiver::class.java).putExtra("profileId", game.id),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            manager.cancel(pending)
+            pending.cancel()
+        }
+    }
 }
 
 class ScheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val p = Profiles.all(context).find { it.id == intent.getIntExtra("profileId", -1) } ?: return
+        if (!AutomationControl.enabled(context)) return
         Scheduler.schedule(context, p)
         if (!p.enabled || p.packageName.isBlank()) return
         ScheduledJobs.enqueue(context, p)

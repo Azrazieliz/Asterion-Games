@@ -40,14 +40,14 @@ class GameAccessibilityService : AccessibilityService() {
         brain = Brain(this)
         Profiles.migrateGame26NoFixedTimeout(this)
         Events.record(this, "Accessibility controller connected")
-        ScheduledJobs.recover(this).forEach(::enqueue)
+        if (AutomationControl.enabled(this)) ScheduledJobs.recover(this).forEach(::enqueue)
     }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkg = event.packageName?.toString()
             if (!pkg.isNullOrBlank()) lastWindowPackage = pkg
             val now = System.currentTimeMillis()
-            if (now - lastRecoveryTime > 20_000 &&
+            if (AutomationControl.enabled(this) && now - lastRecoveryTime > 20_000 &&
                 getSystemService(KeyguardManager::class.java)?.isKeyguardLocked != true) {
                 lastRecoveryTime = now
                 ScheduledJobs.recover(this).forEach(::enqueue)
@@ -58,7 +58,9 @@ class GameAccessibilityService : AccessibilityService() {
     override fun onDestroy() { stopAll(); instance = null; super.onDestroy() }
 
     fun enqueue(p: GameProfile) {
+        if (!AutomationControl.enabled(this)) return
         main.post {
+            if (!AutomationControl.enabled(this)) return@post
             if (queue.none { it.id == p.id } && active?.id != p.id) queue.addLast(p)
             if (active == null) startNext()
         }
@@ -77,6 +79,7 @@ class GameAccessibilityService : AccessibilityService() {
         Events.record(this, if (cancelPending) "User stopped all jobs" else "Controller stopped")
     }
     private fun startNext() {
+        if (!AutomationControl.enabled(this)) { stopAll(); return }
         if (active != null || queue.isEmpty()) return
         val p = queue.removeFirst()
         if (getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true) {
@@ -201,6 +204,8 @@ class GameAccessibilityService : AccessibilityService() {
             } else main.postDelayed({ adapt(p, id) }, 1500)
             return
         }
+        if (!AutomationControl.enabled(this)) { stopAll(cancelPending = true); return }
+        GameAccounts.observe(this, p, frame)
         missingFramesSince = 0L
         if (frame.time == lastFrameTime) { main.postDelayed({ adapt(p, id) }, 500); return }
         lastFrameTime = frame.time
