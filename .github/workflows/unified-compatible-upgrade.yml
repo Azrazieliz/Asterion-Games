@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: feature/account-ui-safety-meta-news-20261030
+          ref: 03ac4416ae207bd064785e3d4ce461f50d940603
       - uses: actions/checkout@v4
         with:
           repository: Azrazieliz/Game-Central-Database
@@ -110,7 +110,7 @@ jobs:
       - name: Publish complete unified app
         uses: actions/upload-artifact@v4
         with:
-          name: Asterion-Unified-AccountUI-Compatible-Upgrade
+          name: Asterion-Unified-v0.4.2-VerifiedSigner
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/debug/SIGNING_CERTIFICATE.txt
