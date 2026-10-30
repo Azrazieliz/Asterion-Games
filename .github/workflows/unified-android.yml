@@ -2,7 +2,7 @@ name: Unified Asterion Android APK
 
 on:
   push:
-    branches: [feature/unified-pilot-codex-20261030]
+    branches: [feature/unified-pilot-codex-20261030, feature/account-ui-safety-meta-news-20261030]
   workflow_dispatch:
 
 permissions:

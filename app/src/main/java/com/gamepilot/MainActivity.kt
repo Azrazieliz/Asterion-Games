@@ -325,7 +325,8 @@ class MainActivity : Activity() {
             area.addView(verticalSpace(9))
             area.addView(action("Character strategy summary") {
                 GameCodexBridge.refresh(this, p.id)
-                dialog("Character strategy", CodexStrategyAdvisor.overview(this, p.id))
+                dialog("Evidence-based meta", MetaEvidence.status(this, p) +
+                    "\n\n" + CodexStrategyAdvisor.overview(this, p.id))
             }, LinearLayout.LayoutParams(-1, dp(49)))
         }
     }

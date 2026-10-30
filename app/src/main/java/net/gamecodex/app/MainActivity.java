@@ -66,7 +66,16 @@ public class MainActivity extends Activity {
         s.setAllowFileAccessFromFileURLs(true);
         s.setAllowUniversalAccessFromFileURLs(true);
         webView.setWebChromeClient(new WebChromeClient());
-        webView.setWebViewClient(new WebViewClient());
+        webView.setWebViewClient(new WebViewClient() {
+            @Override public void onPageFinished(WebView view, String url) {
+                String account = getIntent().getStringExtra("codex_account");
+                if ("global".equals(account) || "jp".equals(account)) {
+                    view.evaluateJavascript(
+                        "if(typeof setActiveCodexAccount==='function'){" +
+                            "setActiveCodexAccount('" + account + "');}", null);
+                }
+            }
+        });
         webView.addJavascriptInterface(new CodexBridge(), "AndroidCodex");
     }
 

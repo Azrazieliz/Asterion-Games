@@ -43,9 +43,9 @@ object CodexStrategyAdvisor {
             else candidates.joinToString("\n") {
                 "${it.name} (${it.rarity}), experimental score ${"%.1f".format(it.score)}"
             }
-        return format("General PvE research shortlist:", pve) + "\n\n" +
-            format("PvP opening research shortlist:", pvp) +
-            "\n\nThese are experimental character comparisons, not a verified team, " +
-            "resource allocation, ownership grade, upgrade authorization or combat simulation."
+        // Do not turn unsourced formula scores into a ranking or a recommendation.
+        return "Existing Codex formula rankings are UNVALIDATED and hidden. " +
+            "Meta ranking must come from time-stamped, independently verified " +
+            "battle outcomes for this specific game account and mode."
     }
 }
