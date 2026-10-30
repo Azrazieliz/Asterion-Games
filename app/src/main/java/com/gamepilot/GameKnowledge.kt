@@ -79,7 +79,28 @@ object GameKnowledge {
             GoalType.FARMING -> farmDone
         }
         val text = normalize(label)
+        // A reward still labelled "Unclaimed" or "Not received" cannot prove success.
+        // Negations must be rejected before substring matching "claimed"/"received".
+        if (Regex("\\b(?:unclaimed|uncollected|incomplete|pending|not\\s+(?:yet\\s+)?(?:claimed|received|obtained|complete)|not\\s+all)\\b").containsMatchIn(text) ||
+            listOf("未受取", "未领取", "未獲得", "未完成").any { it in text }) return false
         return cues.any { text.contains(normalize(it)) }
+    }
+
+    /** Shoujo's several reward tiers are one configured reward objective.
+     * A single successful claim is only partial evidence, not completion of all tiers.
+     * Global and JP use the same proof standard but NOT shared account state.
+     */
+    fun explicitSuccess(gameId: Int, goal: GameGoal, label: String): Boolean {
+        if (!explicitSuccess(goal, label)) return false
+        if ((gameId == 26 || gameId == 22) && goal.type == GoalType.REWARDS) {
+            val text = normalize(label)
+            return listOf(
+                "all daily reward tiers claimed", "all daily rewards claimed",
+                "all daily rewards collected", "all activity reward tiers claimed",
+                "all rewards claimed", "all rewards collected", "all rewards received"
+            ).any { it in text }
+        }
+        return true
     }
     /** Candidates are never generated from a transaction or destructive screen. */
     fun screenUnsafe(frame: LiveFrame): Boolean {
