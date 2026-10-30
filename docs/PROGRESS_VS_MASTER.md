@@ -172,3 +172,16 @@ Status: committed with Android CI pending verification for the latest head. **Do
 - The release APK SHA-256 is `e7e7120b9f1a20430294aacc1ead446a8fae5dc15ddafbe96a1e138f84404582`; release signer SHA-256 is `060d52c4d8333f6b81c7cca6d8414e1a9f8a487ca0fe32fa5bbc2c34987c112a`, matching previous Pilot.
 - New game account auto-identification and public news scheduler are built and installed but **on-device account-detection and RSS/network/notification deliveries are not yet independently observed**. Do not claim full X OAuth/private-list monitoring or account inventory complete.
 - The user provided an imminent Mine War event; app installation was performed only after checking ChatGPT, not the game, was the foreground activity. No game navigation/control occurred.
+
+### 2026-10-30 — Recorded Dragon Mine Wars / Draconic Mirage, release v0.4.4
+
+Owner supplied the exact original filename `Screen_Recording_20261030_195058_Attack on Time.mp4`; retrieved over authorized ADB (690,562,277 bytes, 08:33) and inspected with timestamped image sheets. This is **real cross-server Mine War evidence** following the user-supplied 19:43 event alarm, not a daily farming video. The complete analysis and precise timestamps are in `docs/training/DRAGON_MINE_WARS_20261030.md` (no private video/screenshots committed).
+
+- Built `DragonMineWars.kt` and `DragonMineWarsTest.kt`: 5 observed mine slots; resource/minute and 5-hour displayed collection meter; separate RED and cyan-icon resource types; dynamic hero attack buffs +20% stackable, garrison availability, battle power and victory requirements; conditional, same-currency rate comparison before replacing an already-held mine.
+- Populated GamePlaybooks Global `26` with the timed Dragon Mine Wars flow; JP `22` remains separate and its rules are **not inferred** from the Global video.
+- Integrated event-screen safety in `Brain.choose`: the generic goal OCR clicker cannot click Occupy, Plunder or Challenge without verified typed game state; a known own-mines read-only inspection may be used once per scene.
+- 07:23 recorded own-mines snapshot: 5/5 slots and +941 RED/min and +2,159 cyan/min; this is an observation, not a permanent optimized objective.
+- **Not yet autonomous:** map color/currency parsing from live frames, complete dynamic mine and formation OCR, attack simulation, selection of strongest available teams, cost/risk of replacement, event timing and tested capture/defend cycles. Do not claim mastered Mine Wars.
+- Release target v0.4.4, Android versionCode 11. CI/unit tests and compatible-signature build to verify at this commit.
+
+Existing two frozen architecture/decisions files unchanged; all old account inventory and installations preserved.
