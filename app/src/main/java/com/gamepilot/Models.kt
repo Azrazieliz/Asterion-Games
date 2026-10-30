@@ -34,7 +34,8 @@ sealed class GameAction {
 object Profiles {
     private const val KEY = "game_profiles"
     fun defaults() = GameRoster.titles.mapIndexed { index, name ->
-        GameProfile(index + 1, name, "", 6, 0, false, emptyList())
+        GameProfile(index + 1, name, "", 6, 0, false, emptyList(),
+            maxMinutes = if (index == 25) 0 else 20)
     }
     fun all(context: Context): List<GameProfile> {
         val raw = context.getSharedPreferences("profiles", 0).getString(KEY, null) ?: return defaults()
@@ -47,13 +48,24 @@ object Profiles {
                     o.getInt("id"), o.getString("title"), o.optString("package"),
                     o.optInt("hour", 6), o.optInt("minute", 0), o.optBoolean("enabled"),
                     (0 until steps.length()).mapNotNull { idx -> parseAction(steps.getJSONObject(idx)) },
-                    o.optBoolean("adaptive", true), o.optInt("maxMinutes", 20).coerceIn(1, 120),
+                    o.optBoolean("adaptive", true), o.optInt("maxMinutes", 20).coerceAtLeast(0),
                     o.optInt("resetHour", 0).coerceIn(0, 23)
                 )
             }
             val known = defaults().map { default -> saved.find { it.id == default.id } ?: default }
             known + saved.filter { it.id > defaults().size }.sortedBy { it.id }
         } catch (_: Exception) { defaults() }
+    }
+    /** One-time upgrade from the old default; later explicit user changes are preserved. */
+    fun migrateGame26NoFixedTimeout(context: Context) {
+        val migration = context.getSharedPreferences("policy_migrations", 0)
+        if (migration.getBoolean("game26_unlimited_v1", false)) return
+        val old = all(context)
+        val updated = old.map { p ->
+            if (p.id == 26 && p.maxMinutes == 20) p.copy(maxMinutes = 0) else p
+        }
+        if (updated != old) save(context, updated)
+        migration.edit().putBoolean("game26_unlimited_v1", true).apply()
     }
     fun save(context: Context, profiles: List<GameProfile>) {
         val all = JSONArray()

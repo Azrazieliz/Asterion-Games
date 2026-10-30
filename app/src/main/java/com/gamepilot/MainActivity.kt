@@ -29,6 +29,7 @@ class MainActivity : Activity() {
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 30)
         }
+        Profiles.migrateGame26NoFixedTimeout(this)
         InstalledGames.autoLink(this)
         render()
     }
@@ -193,7 +194,7 @@ class MainActivity : Activity() {
         })
         val hour = field(layout, "Local hour (0–23)", p.hour.toString())
         val minute = field(layout, "Minute (0–59)", p.minute.toString())
-        val duration = field(layout, "Maximum session minutes (1–120)", p.maxMinutes.toString())
+        val duration = field(layout, "Maximum session minutes (0 = until objectives complete)", p.maxMinutes.toString())
         val reset = field(layout, "Daily reset hour in phone local time (0–23)", p.resetHour.toString())
         val enabled = CheckBox(this).apply {
             text = "Enable daily scheduled run"
@@ -226,7 +227,7 @@ class MainActivity : Activity() {
                     val m = minute.text.toString().toInt()
                     val cap = duration.text.toString().toInt()
                     val resetAt = reset.text.toString().toInt()
-                    require(h in 0..23 && m in 0..59 && cap in 1..120 && resetAt in 0..23) { "Invalid time or duration" }
+                    require(h in 0..23 && m in 0..59 && cap >= 0 && resetAt in 0..23) { "Invalid time or duration" }
                     val script = steps.text.toString().lines().filter { it.isNotBlank() }.map(::parseStep)
                     val updated = p.copy(
                         title = name.text.toString().trim(),

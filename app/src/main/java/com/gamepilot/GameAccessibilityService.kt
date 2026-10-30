@@ -38,6 +38,7 @@ class GameAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         instance = this
         brain = Brain(this)
+        Profiles.migrateGame26NoFixedTimeout(this)
         Events.record(this, "Accessibility controller connected")
         ScheduledJobs.recover(this).forEach(::enqueue)
     }
@@ -107,14 +108,16 @@ class GameAccessibilityService : AccessibilityService() {
         noCandidatesSince = 0L
         brain.resetSession()
         GoalLedger(this).reopenForNextSession(p.id)
-        expiry = System.currentTimeMillis() + p.maxMinutes * 60_000L
+        expiry = if (p.maxMinutes == 0) Long.MAX_VALUE
+            else System.currentTimeMillis() + p.maxMinutes.toLong() * 60_000L
         generation++
         val id = generation
         try {
             launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
             startActivity(launch)
             ScheduledJobs.started(this, p)
-            acquireWakeLock(p.maxMinutes * 60_000L + 10_000L)
+            acquireWakeLock(if (p.maxMinutes == 0) 3_600_000L
+                else p.maxMinutes.toLong() * 60_000L + 10_000L)
             Events.record(this, "Launching ${p.title}")
             main.postDelayed({ if (generation == id) {
                 if (p.adaptive) adapt(p, id) else scripted(p, 0, id)
@@ -159,11 +162,12 @@ class GameAccessibilityService : AccessibilityService() {
     }
     private fun adapt(p: GameProfile, id: Int) {
         if (id != generation) return
-        if (System.currentTimeMillis() >= expiry || actionCount >= 500) {
+        if (System.currentTimeMillis() >= expiry || (p.maxMinutes != 0 && actionCount >= 500)) {
             brain.unresolved(p, "Session limit; no verified completion")
             finish(id)
             return
         }
+        if (p.maxMinutes == 0 && wakeLock?.isHeld != true) acquireWakeLock(3_600_000L)
         if (isDispatching) { main.postDelayed({ adapt(p, id) }, 400); return }
         if (!currentPackageMatches(p)) {
             wrongAppChecks++
