@@ -160,7 +160,11 @@ class Brain(private val context: Context) {
                         !(word.contains("free once") || word.contains("free draw")))
                         return@forEach
                 }
-                if (GameKnowledge.dangerous(word)) return@forEach
+                val verifiedFreeLabel = game.id == 26 &&
+                    AttackOnTimeVideoProfile.identify(frame.textValues()) ==
+                        AttackOnTimeVideoProfile.Scene.HERO_DRAW &&
+                    (word.contains("free once") || word.contains("free draw"))
+                if (!verifiedFreeLabel && GameKnowledge.dangerous(word)) return@forEach
                 val strength = hints.maxOfOrNull { cue ->
                     when {
                         word == cue -> 3.0
@@ -201,7 +205,13 @@ class Brain(private val context: Context) {
                 }
             }
             // Explicitly configured actions can be learned against the current observed scene.
-            game.actions.filterIsInstance<GameAction.Tap>().forEachIndexed { index, tap ->
+            // Adaptive replay must not execute unclassified screen-coordinate macros
+            // on a screen where free and paid gacha offers coexist.
+            val scriptedCandidates = if (game.id == 26 &&
+                AttackOnTimeVideoProfile.identify(frame.textValues()) ==
+                    AttackOnTimeVideoProfile.Scene.HERO_DRAW) emptyList()
+                else game.actions.filterIsInstance<GameAction.Tap>()
+            scriptedCandidates.forEachIndexed { index, tap ->
                 val label = "configured:$index"
                 val key = fingerprint(game.id, goal, scene, label)
                 val attempts = currentAttempts[key] ?: 0

@@ -23,3 +23,6 @@ The image is labeled **Shoujo Kaisen**, not Attack on Time, and displays three e
 ### Implementation status
 
 `AttackOnTimePolicy.kt` holds tested, deterministic decisions for all-rewards daily completion, free draws, non-gold daily shop purchases, weekly set-piece ownership and UR+ shard preference, rank-four PvP, and the 60h ad trigger. **These are policy decisions only**. The current live-perception controller does not yet reliably extract the needed price, shop stock, inventory set, AFK timer, or opponent rank, nor execute every sequence on-device. Do not report unit-test success as completed autonomous gameplay.
+
+### User correction to earlier video chronology
+The user specifically identified the intentionally initiated AFK doubling advertisement at approximately **03:35**. Earlier image-sampling timestamps did not establish the button's activation time. Ads must not be treated uniformly as unsolicited interruptions; the AFK ad is purposeful **only after the 60-hour maximum**.
