@@ -135,8 +135,29 @@ class Brain(private val context: Context) {
         // Dragon Mine Wars is a competitive five-garrison mode. Do not blindly
         // select Occupy, Challenge, Plunder or a formation from OCR cues.
         if (DragonMineWars.requiresPlanner(game.id, frame.textValues())) {
+            // Non-destructive observation is permitted. Never select the mine's
+            // Occupy/Challenge/Plunder/Withdraw buttons without structured state.
+            if (DragonMineWars.identify(frame.textValues()) == DragonMineWars.Screen.MAP) {
+                val goal = GoalSettings.get(context, game.id)
+                    .firstOrNull { it.enabled && it.type == GoalType.DAILIES }
+                val ownMines = frame.texts.firstOrNull {
+                    it.label.lowercase().contains("my dragon mine") &&
+                    !it.bounds.isEmpty
+                }
+                if (goal != null && ownMines != null && frame.width > 0 && frame.height > 0) {
+                    val scene = frame.sceneKey()
+                    val key = fingerprint(game.id, goal, scene, "inspect-own-mines")
+                    if ((currentAttempts[key] ?: 0) < 1) {
+                        val x = ownMines.bounds.centerX().toFloat() / frame.width
+                        val y = ownMines.bounds.centerY().toFloat() / frame.height
+                        if (x in 0f..1f && y in 0f..1f)
+                            return Choice(GameAction.Tap(x,y),key,scene,goal,
+                                "inspect-own-mines (no attack or purchase)")
+                    }
+                }
+            }
             Events.record(context, "${game.title}: Dragon Mine Wars recognized; " +
-                "need observed opponent, occupied slots, team and resource values")
+                "current formation and mine yields need verified state before battle")
             return null
         }
         val resourceSensitiveScreen =
