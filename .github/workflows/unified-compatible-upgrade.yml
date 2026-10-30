@@ -1,0 +1,116 @@
+name: Unified Asterion Compatible Upgrade
+
+on:
+  push:
+    branches: [feature/pilot-codex-bridge-20261030]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  unified:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/unified-pilot-codex-20261030
+      - uses: actions/checkout@v4
+        with:
+          repository: Azrazieliz/Game-Central-Database
+          ref: 63d53d0d8e143a053e82a7fe62a135602c700941
+          path: codex-source
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Prepare Android SDK
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          test -n "$SDKMANAGER"
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+      - name: Restore complete validated Codex artwork and data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          CODEX_REPO='Azrazieliz/Game-Central-Database'
+          ART_ID=$(gh api "repos/$CODEX_REPO/actions/artifacts?name=game-codex-shoujo-kaisen-app-pack-v1.0.0&per_page=100" --jq '.artifacts | map(select(.expired==false)) | sort_by(.created_at) | last | .id')
+          test -n "$ART_ID"
+          gh api "/repos/$CODEX_REPO/actions/artifacts/$ART_ID/zip" > /tmp/asterion-codex-pack.zip
+          mkdir -p /tmp/asterion-codex-outer /tmp/asterion-codex-full
+          unzip -q /tmp/asterion-codex-pack.zip -d /tmp/asterion-codex-outer
+          PACK="$(find /tmp/asterion-codex-outer -type f -name '*app-pack*.zip' | head -n 1)"
+          test -f "$PACK"
+          unzip -q "$PACK" -d /tmp/asterion-codex-full
+          SOURCE="$(find /tmp/asterion-codex-full -path '*/data/catalog.js' -type f | head -n 1)"
+          test -f "$SOURCE"
+          SOURCE="$(dirname "$(dirname "$SOURCE")")"
+          test -f "$SOURCE/index.html"
+          mkdir -p app/src/main/assets
+          rm -rf app/src/main/assets/codex
+          cp -a "$SOURCE" app/src/main/assets/codex
+          # Overlay the currently approved Codex implementation; preserve full data and art.
+          for name in core.js browser.js detail.js app.js styles.css index.html optimizer_worker.js brand-mark.svg; do
+            cp "codex-source/android/app/src/main/assets/codex/$name" "app/src/main/assets/codex/$name"
+          done
+          python3 - <<'PY'
+          import json,pathlib
+          root=pathlib.Path("app/src/main/assets/codex")
+          s=(root/"data/catalog.js").read_text(encoding="utf-8")
+          assert s.startswith("window.CODEX_CATALOG=")
+          data=json.loads(s[len("window.CODEX_CATALOG="):].rstrip(";\n"))
+          n=len(data.get("entities",[]))
+          subsystems=len(data.get("subsystems",[]))
+          images=sum(1 for p in (root/"assets").rglob("*") if p.is_file())
+          assert n>=520 and subsystems>=100,(n,subsystems)
+          assert images>=100, f"Missing original artwork: {images} assets"
+          print(f"UNIFIED_ASTERION_CODEX_VALID characters={n} systems={subsystems} artwork={images}")
+          PY
+      - name: Verify Codex source JavaScript
+        run: |
+          node --check app/src/main/assets/codex/core.js
+          node --check app/src/main/assets/codex/browser.js
+          node --check app/src/main/assets/codex/app.js
+      - name: Restore consistent Pilot debug signer
+        uses: actions/cache@v4
+        with:
+          path: .ci-signing/debug.keystore
+          key: asterion-pilot-ci-debug-signing-v2
+      - name: Ensure signer exists
+        run: |
+          mkdir -p .ci-signing
+          if [[ ! -f .ci-signing/debug.keystore ]]; then
+            keytool -genkeypair -noprompt -storetype PKCS12 \
+              -keystore .ci-signing/debug.keystore -storepass android \
+              -keypass android -alias androiddebugkey -keyalg RSA \
+              -keysize 2048 -validity 10000 \
+              -dname "CN=Asterion Unified CI Debug,O=Android,C=US"
+          fi
+      - name: Test and assemble the single fused APK
+        run: gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
+      - name: Verify APK and record signer
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs \
+            app/build/outputs/apk/debug/app-debug.apk > app/build/outputs/apk/debug/SIGNING_CERTIFICATE.txt
+          grep 'Signer #1 certificate SHA-256 digest' app/build/outputs/apk/debug/SIGNING_CERTIFICATE.txt
+      - name: Confirm exact installed Pilot signing identity
+        run: |
+          ACTUAL="$(grep 'Signer #1 certificate SHA-256 digest' app/build/outputs/apk/debug/SIGNING_CERTIFICATE.txt | awk '{print $NF}')"
+          EXPECTED="060d52c4d8333f6b81c7cca6d8414e1a9f8a487ca0fe32fa5bbc2c34987c112a"
+          echo "Installed signer: $EXPECTED"
+          echo "Built signer:     $ACTUAL"
+          [[ "$ACTUAL" == "$EXPECTED" ]] || { echo "::error::Signer differs from device; refusing upgrade artifact"; exit 1; }
+      - name: Publish complete unified app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Asterion-Unified-Compatible-Upgrade
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/SIGNING_CERTIFICATE.txt
+          if-no-files-found: error
