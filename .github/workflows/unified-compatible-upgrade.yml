@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 9e6127bc05a2c5316fe8a6221bd2acd63b9f5d57
+          ref: 1a4fd689c4380f5e8ffc4d12ce569c90bbef1c8e
       - uses: actions/checkout@v4
         with:
           repository: Azrazieliz/Game-Central-Database
@@ -110,7 +110,7 @@ jobs:
       - name: Publish complete unified app
         uses: actions/upload-artifact@v4
         with:
-          name: Asterion-Unified-v0.4.3-VerifiedSigner
+          name: Asterion-Unified-v0.4.4-VerifiedSigner
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/debug/SIGNING_CERTIFICATE.txt
