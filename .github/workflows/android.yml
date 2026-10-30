@@ -1,7 +1,7 @@
 name: Android APK
 on:
   push:
-    branches: [main, feature/pilot-codex-bridge-20261030, feature/shoujo-verified-reward-proof-20261030]
+    branches: [main, feature/pilot-codex-bridge-20261030]
   workflow_dispatch:
 jobs:
   build:
