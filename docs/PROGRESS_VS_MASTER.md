@@ -165,3 +165,10 @@ Implemented in `feature/account-ui-safety-meta-news-20261030`:
 - Old standalone Codex backup on the authorized PC contains a 144-byte WebView local-storage log and no obvious `game_codex_roster` key; there is no evidence of a complete old personal roster to migrate. Catalog and artwork remain bundled, account ownership still requires actual game observation.
 
 Status: committed with Android CI pending verification for the latest head. **Do not label the private X feed or complete owned-roster learning finished.** Neither frozen master has been edited.
+
+### 2026-10-30 — v0.4.3 compatible installation evidence
+
+- Android package `com.gamepilot` was updated **in place** through the connected ADB phone, no uninstall or clear-data operation. Verified from Android `dumpsys package`: `versionCode=10`, `versionName=0.4.3-unified`.
+- The release APK SHA-256 is `e7e7120b9f1a20430294aacc1ead446a8fae5dc15ddafbe96a1e138f84404582`; release signer SHA-256 is `060d52c4d8333f6b81c7cca6d8414e1a9f8a487ca0fe32fa5bbc2c34987c112a`, matching previous Pilot.
+- New game account auto-identification and public news scheduler are built and installed but **on-device account-detection and RSS/network/notification deliveries are not yet independently observed**. Do not claim full X OAuth/private-list monitoring or account inventory complete.
+- The user provided an imminent Mine War event; app installation was performed only after checking ChatGPT, not the game, was the foreground activity. No game navigation/control occurred.
