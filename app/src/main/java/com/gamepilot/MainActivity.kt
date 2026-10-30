@@ -43,6 +43,7 @@ class MainActivity : Activity() {
     private val importRequest = 103
     private var tab = Tab.GAMES
     private var selectedGameId: Int? = null
+    private var newsLoading = false
     private lateinit var root: LinearLayout
     private lateinit var area: LinearLayout
 
@@ -458,6 +459,15 @@ class MainActivity : Activity() {
             .apply { if (!account.isNullOrBlank()) putExtra("codex_account", account) })
     }
     private fun showNews() {
+        if (!newsLoading && ImportantGameNews.lastRefresh(this) == 0L) {
+            newsLoading = true
+            ImportantGameNews.refreshNow(this) {
+                runOnUiThread {
+                    newsLoading = false
+                    if (tab == Tab.NEWS) render()
+                }
+            }
+        }
         area.addView(headline("Important game news",
             "Automatic updates from public publisher reports"))
         area.addView(card().apply {
