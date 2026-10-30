@@ -31,7 +31,7 @@ import java.io.ByteArrayOutputStream
  * while all Pilot settings and learning data continue in this same package.
  */
 class MainActivity : Activity() {
-    private enum class Tab { GAMES, AUTOMATION }
+    private enum class Tab { GAMES, AUTOMATION, NEWS }
     private val ink = Color.rgb(237, 242, 250)
     private val muted = Color.rgb(151, 164, 183)
     private val dark = Color.rgb(12, 17, 28)
@@ -121,23 +121,48 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(19), dp(16), dp(19), dp(10))
             addView(label("ASTERION", 24f, ink, true))
-            addView(label("Games, schedules and character knowledge", 12f, muted))
+            addView(label("Game accounts • learning • scheduling", 12f, muted))
+            addView(verticalSpace(12))
+            val enabled = AutomationControl.enabled(this@MainActivity)
+            val power = action(if (enabled) "TURN OFF ALL AUTOMATION" else "TURN ON AUTOMATION",
+                !enabled) {
+                if (enabled) {
+                    AutomationControl.setEnabled(this@MainActivity, false)
+                    render()
+                } else {
+                    AutomationControl.setEnabled(this@MainActivity, true)
+                    render()
+                }
+            }
+            if (enabled) {
+                power.background = bg(Color.rgb(159, 47, 51), 12)
+                power.setTextColor(Color.WHITE)
+            }
+            addView(power, LinearLayout.LayoutParams(-1, dp(52)))
+            addView(label(if (enabled) "AUTOMATION ON • tap to stop and cancel queued sessions"
+                else "AUTOMATION OFF • alarms cancelled, no game controls",
+                12f, if (enabled) accent else muted))
         })
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(12), dp(4), dp(12), dp(12))
         }
-        listOf("Games", "Automation", "Game Codex").forEachIndexed { index, name ->
+        listOf("Accounts", "Automation", "News", "Codex").forEachIndexed { index, name ->
             val selected = when (index) {
                 0 -> tab == Tab.GAMES
                 1 -> tab == Tab.AUTOMATION
+                2 -> tab == Tab.NEWS
                 else -> false
             }
             nav.addView(action(name, selected) {
-                if (index == 2) {
+                if (index == 3) {
                     openCodex()
                 } else {
-                    tab = if (index == 0) Tab.GAMES else Tab.AUTOMATION
+                    tab = when(index) {
+                        0 -> Tab.GAMES
+                        1 -> Tab.AUTOMATION
+                        else -> Tab.NEWS
+                    }
                     selectedGameId = null
                     render()
                 }
@@ -160,6 +185,7 @@ class MainActivity : Activity() {
         when (tab) {
             Tab.GAMES -> showGames()
             Tab.AUTOMATION -> showAutomation()
+            Tab.NEWS -> showNews()
         }
     }
     private fun showGames() {
@@ -168,7 +194,10 @@ class MainActivity : Activity() {
         val profiles = Profiles.all(this)
         val linked = profiles.count { it.packageName.isNotBlank() }
         val active = profiles.count { it.enabled }
-        area.addView(headline("Your games", "${profiles.size} profiles  •  $linked linked  •  $active scheduled"))
+        area.addView(headline("Game accounts", "${profiles.size} games • $linked installed • $active scheduled"))
+        area.addView(label("Each game has its own account, activities, knowledge and news.",
+            12.5f, muted))
+        area.addView(verticalSpace(8))
         val find = EditText(this).apply {
             isSingleLine = true
             hint = "Search games"
@@ -190,7 +219,14 @@ class MainActivity : Activity() {
                 it.title.contains(query, true) || it.packageName.contains(query, true)
             }.forEach { game ->
                 val c = card()
-                c.addView(label(game.title, 16f, ink, true))
+                val account = GameAccounts.current(this, game)
+                c.addView(label(if (game.id == 26) "Shoujo Kaisen • Global"
+                    else if (game.id == 22) "Shoujo Kaisen • JP"
+                    else game.title, 16f, ink, true))
+                c.addView(label(if (account.playerId != null)
+                    "Account linked • " + account.playerId
+                    else if (game.packageName.isBlank()) "Install/link the game first"
+                    else "Account ID not yet verified • recognized from live game UI", 11.5f, muted))
                 val state = when {
                     game.packageName.isBlank() -> "Not linked"
                     game.enabled -> "Scheduled  •  %02d:%02d".format(game.hour, game.minute)
@@ -228,9 +264,27 @@ class MainActivity : Activity() {
             render()
         }, LinearLayout.LayoutParams(-1, dp(46)))
         area.addView(verticalSpace(14))
-        area.addView(headline(p.title,
+        area.addView(headline(if (p.id==26) "Shoujo Kaisen • Global"
+            else if (p.id==22) "Shoujo Kaisen • JP" else p.title,
             (if (p.packageName.isBlank()) "Not linked" else "Installed game linked") +
                 "  •  " + (if (p.enabled) "Scheduled" else "Not scheduled")))
+        area.addView(card().apply {
+            val account = GameAccounts.current(this@MainActivity, p)
+            addView(label("Game account", 16f, ink, true))
+            addView(verticalSpace(6))
+            addView(label("Region: " + account.region, 13f, muted))
+            addView(label(if (account.playerId == null)
+                "Account not verified. The app links it only after reading the same in-game UID twice."
+                else "Verified player ID: " + account.playerId,
+                13f, if (account.playerId == null) muted else accent))
+            if (GameCodexBridge.accountFor(p.id) != null) {
+                addView(verticalSpace(7))
+                addView(label(GameCodexBridge.status(this@MainActivity, p.id), 12.5f, muted))
+                addView(action("Open this account's database") {
+                    openCodex(GameCodexBridge.accountFor(p.id))
+                })
+            }
+        })
         val summary = card().apply {
             addView(label("Today's objectives", 16f, ink, true))
             addView(verticalSpace(8))
@@ -240,6 +294,8 @@ class MainActivity : Activity() {
         area.addView(action("Run now", true) {
             val ctl = GameAccessibilityService.instance
             when {
+                !AutomationControl.enabled(this) -> Toast.makeText(this,
+                    "Automation is OFF. Enable it using the power control.", Toast.LENGTH_LONG).show()
                 p.packageName.isBlank() -> Toast.makeText(this, "Link the installed game first", Toast.LENGTH_LONG).show()
                 ctl == null -> Toast.makeText(this, "Enable game control in Automation first", Toast.LENGTH_LONG).show()
                 else -> ctl.enqueue(p)
@@ -264,7 +320,7 @@ class MainActivity : Activity() {
         if (GameCodexBridge.accountFor(p.id) != null) {
             area.addView(verticalSpace(9))
             area.addView(action("Open character database") {
-                openCodex()
+                openCodex(GameCodexBridge.accountFor(p.id))
             }, LinearLayout.LayoutParams(-1, dp(49)))
             area.addView(verticalSpace(9))
             area.addView(action("Character strategy summary") {
@@ -274,7 +330,15 @@ class MainActivity : Activity() {
         }
     }
     private fun showAutomation() {
-        area.addView(headline("Automation", "Controls, permissions and current activity"))
+        area.addView(headline("Automation", "A single master control for all scheduled games"))
+        area.addView(card().apply {
+            addView(label(if (AutomationControl.enabled(this@MainActivity))
+                "RUNNING / ARMED" else "ALL AUTOMATION STOPPED", 17f,
+                if (AutomationControl.enabled(this@MainActivity)) accent else muted, true))
+            addView(verticalSpace(7))
+            addView(label("Use TURN OFF ALL AUTOMATION at the top of every screen to cancel alarms, queued jobs, active gameplay and live perception.",
+                13f, muted))
+        })
         val service = GameAccessibilityService.instance != null
         val capture = LiveVisionService.running
         area.addView(card().apply {
@@ -337,8 +401,40 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(-1, dp(48)))
         })
     }
-    private fun openCodex() {
-        startActivity(Intent().setClassName(this, "net.gamecodex.app.MainActivity"))
+    private fun openCodex(account: String? = null) {
+        startActivity(Intent().setClassName(this, "net.gamecodex.app.MainActivity")
+            .apply { if (!account.isNullOrBlank()) putExtra("codex_account", account) })
+    }
+    private fun showNews() {
+        area.addView(headline("Game news", "Accounts, official announcements and alerts"))
+        area.addView(card().apply {
+            addView(label("X account connection", 16f, ink, true))
+            addView(verticalSpace(8))
+            addView(label("Not connected. Personalized X follows and notifications require an authorized X OAuth connection. No credentials are read from the X app.",
+                13f, muted))
+            addView(verticalSpace(10))
+            addView(action("Open X account") {
+                startActivity(Intent(Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://x.com/home")))
+            })
+        })
+        area.addView(label("Game-specific source discovery", 17f, ink, true))
+        area.addView(verticalSpace(8))
+        Profiles.all(this).filter { it.packageName.isNotBlank() }.forEach { game ->
+            area.addView(card().apply {
+                addView(label(game.title, 16f, ink, true))
+                addView(label("Account: " + GameAccounts.region(game.id) +
+                    " • No verified X feed synchronized yet", 12f, muted))
+                addView(verticalSpace(9))
+                addView(action("Find official X posts") {
+                    val query = android.net.Uri.encode(game.title + " official")
+                    startActivity(Intent(Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://x.com/search?q=$query&f=live")))
+                })
+            })
+        }
+        area.addView(label("News recaps and urgent alerts will require source ingestion, categorization, and notification testing; these are not yet active.",
+            12f, muted))
     }
 
     private fun dialog(title: String, message: String) {
