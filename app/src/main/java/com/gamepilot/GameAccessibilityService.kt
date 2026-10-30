@@ -22,6 +22,11 @@ class GameAccessibilityService : AccessibilityService() {
     private var active: GameProfile? = null
     private var expiry = 0L
     private var actionCount = 0
+    private var sessionStartedAt = 0L
+    private var startGoalCounts = emptyMap<String, Int>()
+    private var sessionObjectiveSignature = ""
+    private var sessionAccount = ""
+    private var sessionTargetGoals = 0
     private var lastAction: Brain.Choice? = null
     private var lastBefore: LiveFrame? = null
     private var lastFrameTime = 0L
@@ -88,6 +93,8 @@ class GameAccessibilityService : AccessibilityService() {
         main.removeCallbacksAndMessages(null)
         queue.clear()
         active = null
+        sessionTargetGoals = 0
+        sessionObjectiveSignature = ""
         lastAction = null
         lastBefore = null
         isDispatching = false
@@ -122,6 +129,15 @@ class GameAccessibilityService : AccessibilityService() {
                 sync.ownedCount + " character entries)")
         }
         active = p
+        sessionStartedAt = System.currentTimeMillis()
+        sessionAccount = GameAccounts.current(this, p).playerId ?: "unverified:${p.id}"
+        val trackingGoals = GoalSettings.get(this,p.id).filter { it.enabled }
+        sessionObjectiveSignature = trackingGoals.joinToString("|") { "${it.id}:${it.targetRuns}" }
+        val ledger = GoalLedger(this)
+        startGoalCounts = trackingGoals.associate { it.id to ledger.read(p.id,it).verifiedRuns }
+        sessionTargetGoals = trackingGoals.count { goal ->
+            ledger.read(p.id,goal).verifiedRuns < goal.targetRuns
+        }
         actionCount = 0
         lastAction = null
         lastBefore = null
@@ -159,6 +175,19 @@ class GameAccessibilityService : AccessibilityService() {
             Events.record(this, "Session ended ${game.title}. VERIFIED goals only: ${brain.summary(game)}")
             val hasObjectives = GoalSettings.get(this, game.id).any { it.enabled }
             ScheduledJobs.finished(this, game, hasObjectives && brain.complete(game))
+            val tracked = GoalSettings.get(this,game.id).filter { it.enabled }
+            val newlyCompleted = tracked.count { goal ->
+                val start = startGoalCounts[goal.id] ?: 0
+                val now = GoalLedger(this).read(game.id,goal).verifiedRuns
+                now >= goal.targetRuns && start < goal.targetRuns
+            }
+            if (sessionTargetGoals > 0 && sessionObjectiveSignature.isNotBlank()) {
+                val result = StrategyExperiment.Run(
+                    game.id, sessionAccount, if (game.adaptive) "adaptive" else "scripted",
+                    sessionObjectiveSignature, sessionStartedAt,
+                    System.currentTimeMillis(), newlyCompleted, sessionTargetGoals, actionCount)
+                StrategyExperiment.record(this, result)
+            }
         }
         active = null
         lastAction = null

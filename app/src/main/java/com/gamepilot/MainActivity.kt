@@ -341,6 +341,10 @@ class MainActivity : Activity() {
         area.addView(action("Daily goals") { openEditor(p.id, true) },
             LinearLayout.LayoutParams(-1, dp(49)))
         area.addView(verticalSpace(9))
+        area.addView(action("Measured strategy performance") {
+            dialog("Strategy experiment evidence", StrategyExperiment.report(this, p))
+        }, LinearLayout.LayoutParams(-1, dp(49)))
+        area.addView(verticalSpace(9))
         area.addView(action("Gameplay history") {
             dialog("Learned gameplay", EpisodeJournal(this).recent(p.id))
         }, LinearLayout.LayoutParams(-1, dp(49)))
